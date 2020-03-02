@@ -14,14 +14,14 @@ int status;
 // a PID controller object
 QuaternionPID controller{ 1.0, 0.5 };
 
-#define GPS_RX_PIN 4
-#define GPS_TX_PIN 3
+#define GPS_RX_PIN 3
+#define GPS_TX_PIN 4
 #define GPS_BAUD_RATE 9600
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
 // The serial connection to the GPS device
-NeoSWSerial ss(GPS_RX_PIN, GPS_TX_PIN);
+NeoSWSerial ss(GPS_TX_PIN, GPS_RX_PIN);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;

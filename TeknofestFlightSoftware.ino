@@ -7,6 +7,9 @@
 
 #include "EarthPositionFilter.h"
 
+//TODO: redefine the value below as at least (4g)^2=16 !
+#define TAKEOFF_ACCELERATION_SQ 1.0
+
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 MPU9250 IMU(Wire,0x68);
 int status;
@@ -101,7 +104,7 @@ void setup() {
 
   // calibrate the estimated orientation
   Serial.println("Calibrating orientation estimate, wait please!");
-  uint32_t calib_start = micros();
+  uint32_t calib_start = millis();
   madgwick_beta = 4.0;
   while (true) {
     if(IMU.isDataReady()) {
@@ -117,13 +120,24 @@ void setup() {
       before += deltat;
 
       // calibration is done after about 3 seconds
-      if (micros() - calib_start > 3000000) {
+      if (millis() - calib_start > 3000) {
         Serial.println("Calibration done.");
         break;
       }
     }
   }
   madgwick_beta = MadgwickBetaDef;
+  //TODO: Let the ground station know that flight computer is READY.
+
+  // wait for high acceleration
+  while (true) {
+    if(IMU.isDataReady()) {
+      // read the sensor
+      IMU.readSensor();
+      ax = IMU.getAccelX_g(); ay = IMU.getAccelY_g(); az = IMU.getAccelZ_g();
+      if ((ax*ax + ay*ay + az*az) > TAKEOFF_ACCELERATION_SQ) break;
+    }
+  }
 }
 
 //-------------------------------------------------------------------------------------------------

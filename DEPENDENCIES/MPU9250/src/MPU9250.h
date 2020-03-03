@@ -77,7 +77,6 @@ class MPU9250 {
     int setSrd(uint8_t srd);
     int enableDataReadyInterrupt();
     int disableDataReadyInterrupt();
-    int enableWakeOnMotion(float womThresh_mg,LpAccelOdr odr);
     bool isDataReady();
     int readSensor();
     float getAccelX_g();
@@ -140,8 +139,6 @@ class MPU9250 {
     float _gx, _gy, _gz;
     float _hx, _hy, _hz;
     float _t;
-    // wake on motion
-    uint8_t _womThreshold;
     // scale factors
     float _accelScale;
     float _gyroScale;

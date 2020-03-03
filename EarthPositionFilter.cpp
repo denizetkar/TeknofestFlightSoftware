@@ -87,8 +87,8 @@ void EarthPositionFilter::predict(float accel_m_per_sec)
 {
   float temp[2][2];
   // update state vector, (x)
-  pos_cm = safe_int_add(pos_cm, static_cast<int32_t>( round(dt * vel_cm_per_sec + 0.5 * accel_m_per_sec * dt_dt * 100.0) ));
-  vel_cm_per_sec += dt * accel_m_per_sec * 100.0;
+  pos_cm = safe_int_add(pos_cm, static_cast<int32_t>( round(dt * vel_cm_per_sec + 0.5 * (accel_m_per_sec * 100.0) * dt_dt) ));
+  vel_cm_per_sec += dt * (accel_m_per_sec * 100.0);
   // update state covariance matrix, (P)
   // P = F*P
   temp[0][0] = P[0][0] + dt * P[1][0];

@@ -379,44 +379,6 @@ int MPU9250::disableDataReadyInterrupt() {
   return 1;
 }
 
-/* configures and enables wake on motion, low power mode */
-int MPU9250::enableWakeOnMotion(float womThresh_mg,LpAccelOdr odr) {
-  // use low speed SPI for register setting
-  _useSPIHS = false;
-  // set AK8963 to Power Down
-  writeAK8963Register(AK8963_CNTL1,AK8963_PWR_DOWN);
-  // reset the MPU9250
-  writeRegister(PWR_MGMNT_1,PWR_RESET);
-  // wait for MPU-9250 to come back up
-  delay(1);
-  if(writeRegister(PWR_MGMNT_1,0x00) < 0){ // cycle 0, sleep 0, standby 0
-    return -1;
-  } 
-  if(writeRegister(PWR_MGMNT_2,DIS_GYRO) < 0){ // disable gyro measurements
-    return -2;
-  } 
-  if(writeRegister(ACCEL_CONFIG2,ACCEL_DLPF_184) < 0){ // setting accel bandwidth to 184Hz
-    return -3;
-  } 
-  if(writeRegister(INT_ENABLE,INT_WOM_EN) < 0){ // enabling interrupt to wake on motion
-    return -4;
-  } 
-  if(writeRegister(MOT_DETECT_CTRL,(ACCEL_INTEL_EN | ACCEL_INTEL_MODE)) < 0){ // enabling accel hardware intelligence
-    return -5;
-  } 
-  _womThreshold = map(womThresh_mg, 0, 1020, 0, 255);
-  if(writeRegister(WOM_THR,_womThreshold) < 0){ // setting wake on motion threshold
-    return -6;
-  }
-  if(writeRegister(LP_ACCEL_ODR,(uint8_t)odr) < 0){ // set frequency of wakeup
-    return -7;
-  }
-  if(writeRegister(PWR_MGMNT_1,PWR_CYCLE) < 0){ // switch to accel low power mode
-    return -8;
-  }
-  return 1;
-}
-
 /* checks if raw data is ready to read */
 bool MPU9250::isDataReady() {
   uint8_t res;

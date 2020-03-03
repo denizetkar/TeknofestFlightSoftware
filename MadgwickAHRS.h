@@ -13,11 +13,16 @@
 #ifndef MadgwickAHRS_h
 #define MadgwickAHRS_h
 
+//---------------------------------------------------------------------------------------------------
+// Definitions
+
+#define MadgwickBetaDef   0.5   // 2 * proportional gain
 //----------------------------------------------------------------------------------------------------
 // Variable declaration
 
-extern float beta;        // algorithm gain
+extern float madgwick_beta;   // algorithm gain
 extern float q_a[4];  // quaternion of sensor frame relative to auxiliary frame
+extern float s_a[4];   // errors from absolute orientation
 
 //---------------------------------------------------------------------------------------------------
 // Function declarations

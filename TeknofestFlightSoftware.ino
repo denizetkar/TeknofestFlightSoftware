@@ -42,12 +42,15 @@ const unsigned char UBLOX_INIT[] PROGMEM = {
   0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x08,0x00,0x00,0x00,0x00,0x00,0x01,0x08,0x5C, // GxZDA off
 };
 
-uint32_t now, before = 0;
 // There is approximately 5.5 degrees East magnetic declination in Turkey on 24.02.2020.
 // ( cos(-5.5*pi/180), 0, 0, sin(-5.5*pi/180) ) is the rotation quaternion required to
 // rotate the true north frame into magnetic north frame
 const float q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
 
+
+float roll, pitch, yaw, ax, ay, az, ux, uy, uz, q_a_tn[4];
+int32_t lat_cm, lon_cm;
+uint32_t before = 0, deltat;
 void setup() {
   // serial to display data
   Serial.begin(2000000);
@@ -88,37 +91,65 @@ void setup() {
      {0.0012955016372647,0.00387494101216781,0.987478872856534}});
 
   // mag bias
-  IMU.setMagCalX(-33.534995);
-  IMU.setMagCalY(16.740953);
-  IMU.setMagCalZ(14.793925);
+  IMU.setMagCalX(-31.775899);
+  IMU.setMagCalY(13.935825);
+  IMU.setMagCalZ(16.369178);
   IMU.setMagTM(
-    {{0.027911,0.000271,-0.003472},
-     {0.000271,0.027877,0.000518},
-     {-0.003472,0.000518,0.026670}});
+    {{0.027530,0.000372,-0.003384},
+     {0.000372,0.027866,0.000568},
+     {-0.003384,0.000568,0.027386}});
+
+  // calibrate the estimated orientation
+  Serial.println("Calibrating orientation estimate, wait please!");
+  uint32_t calib_start = micros();
+  madgwick_beta = 4.0;
+  while (true) {
+    if(IMU.isDataReady()) {
+      deltat = micros() - before;
+      // read the sensor
+      IMU.readSensor();
+  
+      // Update rotation of the sensor frame with respect to the NWU frame
+      // where N is magnetic north, W is west and U is up.
+      MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
+                         IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
+                         IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat/1000000.0);
+      before += deltat;
+
+      // calibration is done after about 3 seconds
+      if (micros() - calib_start > 3000000) {
+        Serial.println("Calibration done.");
+        break;
+      }
+    }
+  }
+  madgwick_beta = MadgwickBetaDef;
 }
 
-float roll, pitch, yaw, ax, ay, az, ux, uy, uz, q_a_tn[4];
-int32_t lat_cm, lon_cm;
+//-------------------------------------------------------------------------------------------------
+
 void loop() {
+  float deltat_sec;
   if(IMU.isDataReady()) {
-    now = micros();
+    deltat = micros() - before;
+    deltat_sec = deltat / 1000000.0;
     // read the sensor
     IMU.readSensor();
 
     // Update rotation of the sensor frame with respect to the NWU frame
     // where N is magnetic north, W is west and U is up.
     MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
-                       IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
-                       IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), (now-before)/1000000.0);
+                       0, 0, 0,
+                       IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat_sec);
 
     // make magnetic declination corrections to q_a
     quaternion_prod(q_magnetic_declination, q_a, q_a_tn);
 
     // find acceleration vector in local NWU reference frame
     rotate_vector_by_quaternion(q_a_tn, IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(), ax, ay, az);
-    lat_filter.predict(ax);
-    lon_filter.predict(-ay);
-    alt_filter.predict(az - 1.0);
+    lat_filter.set_deltat(deltat_sec); lat_filter.predict(ax);
+    lon_filter.set_deltat(deltat_sec); lon_filter.predict(-ay);
+    alt_filter.set_deltat(deltat_sec); alt_filter.predict(az - 1.0);
 
     // find corrective actions ux, uy, uz
     controller.compute(q_a, IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(), ux, uy, uz);
@@ -133,21 +164,21 @@ void loop() {
 
     // display the data
     Serial.print("dt:\t");
-    Serial.print(now-before);
+    Serial.print(deltat);
     Serial.print("\tRoll:\t");
     Serial.print(roll, 4);
     Serial.print("\tPitch:\t");
     Serial.print(pitch, 4);
     Serial.print("\tYaw:\t");
     Serial.print(yaw, 4);
-    Serial.print("\tX:\t");
-    Serial.print(lat_filter.get_pos_cm());
-    Serial.print("\tY:\t");
-    Serial.print(lon_filter.get_pos_cm());
-    Serial.print("\tZ:\t");
-    Serial.println(alt_filter.get_pos_cm());
+    Serial.print("\tV_x:\t");
+    Serial.print(lat_filter.get_vel_cm_per_sec(), 4);
+    Serial.print("\tV_y:\t");
+    Serial.print(lon_filter.get_vel_cm_per_sec(), 4);
+    Serial.print("\tV_z:\t");
+    Serial.println(alt_filter.get_vel_cm_per_sec(), 4);
     Serial.flush();
-    before = now;
+    before += deltat;
   }
 
   // get gps data if available and 'update' the position and velocity 'prediction's

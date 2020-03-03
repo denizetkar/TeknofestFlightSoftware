@@ -151,7 +151,7 @@ class MPU9250 {
     DlpfBandwidth _bandwidth;
     uint8_t _srd;
     // gyro bias estimation
-    static const size_t _numSamples = 100;
+    static const size_t _numSamples = 400;
     double _gxbD, _gybD, _gzbD;
     float _gxb, _gyb, _gzb;
     // accel bias estimation and transformation matrix

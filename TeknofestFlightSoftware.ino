@@ -51,7 +51,7 @@ const unsigned char UBLOX_INIT[] PROGMEM = {
 const float q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
 
 
-float roll, pitch, yaw, ax, ay, az, ux, uy, uz, q_a_tn[4];
+float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4];
 int32_t lat_cm, lon_cm;
 uint32_t before = 0, deltat;
 void setup() {
@@ -166,7 +166,8 @@ void loop() {
     alt_filter.set_deltat(deltat_sec); alt_filter.predict(az - 1.0);
 
     // find corrective actions ux, uy, uz
-    controller.compute(q_a, IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(), ux, uy, uz);
+    rotate_vector_by_quaternion(q_magnetic_declination, IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(), gx, gy, gz);
+    controller.compute(q_a_tn, gx, gy, gz, ux, uy, uz);
 
     // calculate roll, pitch, yaw
     roll  = atan2(2.0 * (q_a_tn[0] * q_a_tn[1] + q_a_tn[2] * q_a_tn[3]), 1.0 - 2.0 * (q_a_tn[1] * q_a_tn[1] + q_a_tn[2] * q_a_tn[2]));

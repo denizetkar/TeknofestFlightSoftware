@@ -13,9 +13,9 @@ class QuaternionPID {
 
   public:
     QuaternionPID(float _Kp, float _Ki, float _Kd,
-      float _Xmin = -15.0, float _Xmax = 15.0,
-      float _Ymin = -15.0, float _Ymax = 15.0,
-      float _Zmin = -15.0, float _Zmax = 15.0);
+      float _Xmin = -20.0, float _Xmax = 20.0,
+      float _Ymin = -20.0, float _Ymax = 20.0,
+      float _Zmin = -20.0, float _Zmax = 20.0);
 
     // getter and setter functions
     void getGains(float&, float&, float&);

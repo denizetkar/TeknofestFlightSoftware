@@ -6,6 +6,7 @@
 #include <NeoSWSerial.h>
 
 #include "EarthPositionFilter.h"
+#include <Servo.h>
 
 //TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
@@ -15,7 +16,7 @@ MPU9250 IMU(Wire,0x68);
 int status;
 
 // a PID controller object
-QuaternionPID controller{ 1.0, 0.1, 0.5 };
+QuaternionPID controller{ 50.0, 0.5, 1.0 };
 
 #define GPS_RX_PIN 3
 #define GPS_TX_PIN 4
@@ -28,6 +29,15 @@ NeoSWSerial ss(GPS_TX_PIN, GPS_RX_PIN);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
+
+#define SERVO0_PIN 9
+#define SERVO1_PIN 10
+#define SERVO2_PIN 11
+#define SERVO3_PIN 12
+#define SERVO_ZERO_ANGLE 90
+
+// servo object for controlling fins
+Servo servo0, servo1, servo2, servo3;
 
 const unsigned char UBLOX_INIT[] PROGMEM = {
   // Disable specific NMEA sentences
@@ -55,6 +65,17 @@ float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4];
 int32_t lat_cm, lon_cm;
 uint32_t before = 0, deltat;
 void setup() {
+  // attach servos
+  servo0.attach(SERVO0_PIN);
+  servo1.attach(SERVO1_PIN);
+  servo2.attach(SERVO2_PIN);
+  servo3.attach(SERVO3_PIN);
+  // give initial values of 0 degrees
+  servo0.write(SERVO_ZERO_ANGLE);
+  servo1.write(SERVO_ZERO_ANGLE);
+  servo2.write(SERVO_ZERO_ANGLE);
+  servo3.write(SERVO_ZERO_ANGLE);
+
   // serial to display data
   Serial.begin(2000000);
   while(!Serial);
@@ -195,6 +216,8 @@ void loop() {
     Serial.flush();
     before += deltat;
   }
+
+  servo0.write(SERVO_ZERO_ANGLE + uz);
 
   // get gps data if available and 'update' the position and velocity 'prediction's
   while (ss.available() > 0){

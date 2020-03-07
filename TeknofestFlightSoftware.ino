@@ -15,7 +15,7 @@ MPU9250 IMU(Wire,0x68);
 int status;
 
 // a PID controller object
-QuaternionPID controller{ 1.0, 0.5 };
+QuaternionPID controller{ 1.0, 0.1, 0.5 };
 
 #define GPS_RX_PIN 3
 #define GPS_TX_PIN 4
@@ -153,7 +153,7 @@ void loop() {
     // Update rotation of the sensor frame with respect to the NWU frame
     // where N is magnetic north, W is west and U is up.
     MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
-                       0, 0, 0,
+                       IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
                        IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat_sec);
 
     // make magnetic declination corrections to q_a
@@ -186,12 +186,12 @@ void loop() {
     Serial.print(pitch, 4);
     Serial.print("\tYaw:\t");
     Serial.print(yaw, 4);
-    Serial.print("\tV_x:\t");
-    Serial.print(lat_filter.get_vel_cm_per_sec(), 4);
-    Serial.print("\tV_y:\t");
-    Serial.print(lon_filter.get_vel_cm_per_sec(), 4);
-    Serial.print("\tV_z:\t");
-    Serial.println(alt_filter.get_vel_cm_per_sec(), 4);
+    Serial.print("\tX:\t");
+    Serial.print(lat_filter.get_pos_cm());
+    Serial.print("\tY:\t");
+    Serial.print(lon_filter.get_pos_cm());
+    Serial.print("\tZ:\t");
+    Serial.println(alt_filter.get_pos_cm());
     Serial.flush();
     before += deltat;
   }

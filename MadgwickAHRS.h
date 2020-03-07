@@ -22,13 +22,11 @@
 
 extern float madgwick_beta;   // algorithm gain
 extern float q_a[4];  // quaternion of sensor frame relative to auxiliary frame
-extern float s_a[4];   // errors from absolute orientation
 
 //---------------------------------------------------------------------------------------------------
 // Function declarations
 
 void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float deltat);
-void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az, float deltat);
 
 #endif
 //=====================================================================================================

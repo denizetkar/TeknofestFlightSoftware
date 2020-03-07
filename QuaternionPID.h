@@ -6,19 +6,20 @@ void quaternion_prod(const float (&)[4], const float (&)[4], float (&)[4]);
 
 class QuaternionPID {
   protected:
-    float Kp, Kd;
+    float Kp, Ki, Kd;
+    float integrals[3] = { 0.0, 0.0, 0.0 };
     float q_d[4] = {1.0, 0.0, 0.0, 0.0};
     float Xmin, Xmax, Ymin, Ymax, Zmin, Zmax;
 
   public:
-    QuaternionPID(float _Kp, float _Kd,
-      float _Xmin = -128.0, float _Xmax = 128.0,
-      float _Ymin = -128.0, float _Ymax = 128.0,
-      float _Zmin = -128.0, float _Zmax = 128.0);
+    QuaternionPID(float _Kp, float _Ki, float _Kd,
+      float _Xmin = -15.0, float _Xmax = 15.0,
+      float _Ymin = -15.0, float _Ymax = 15.0,
+      float _Zmin = -15.0, float _Zmax = 15.0);
 
     // getter and setter functions
-    void getGains(float&, float&);
-    void setGains(float, float);
+    void getGains(float&, float&, float&);
+    void setGains(float, float, float);
     void getDesiredQuaternion(float (&)[4]);
     void setDesiredQuaternion(const float (&&)[4]);
     void getOutputLimitsX(float&, float&);

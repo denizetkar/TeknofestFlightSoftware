@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <Wire.h>    // I2C library
 
 #ifndef I2C_RATE
-#define I2C_RATE 400000
+#define I2C_RATE 100000
 #endif
 
 class MPU9250 {

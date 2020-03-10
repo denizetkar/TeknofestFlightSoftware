@@ -1,3 +1,5 @@
+//------------------------------------------------------------------------------------------------
+//---------------------includes-------------------------------------------------------------------
 #include <MPU9250.h>
 #include "MadgwickAHRS.h"
 #include "QuaternionPID.h"
@@ -8,19 +10,29 @@
 #include "EarthPositionFilter.h"
 #include <Servo.h>
 
+//------------------------------------------------------------------------------------------------
+//---------------------definitions----------------------------------------------------------------
 //TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
+#define GPS_RX_PIN 3
+#define GPS_TX_PIN 4
+#define GPS_BAUD_RATE 9600
+
+#define SERVO0_PIN 9
+#define SERVO1_PIN 10
+#define SERVO2_PIN 11
+#define SERVO3_PIN 12
+#define SERVO_ZERO_ANGLE 90
+
+//------------------------------------------------------------------------------------------------
+//---------------------setup and loop objects-----------------------------------------------------
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 MPU9250 IMU(Wire, 0x68);
 int status;
 
 // a PID controller object
 QuaternionPID controller{ 50.0, 0.5, 1.0 };
-
-#define GPS_RX_PIN 3
-#define GPS_TX_PIN 4
-#define GPS_BAUD_RATE 9600
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
@@ -30,15 +42,11 @@ NeoSWSerial ss(GPS_TX_PIN, GPS_RX_PIN);
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
 
-#define SERVO0_PIN 9
-#define SERVO1_PIN 10
-#define SERVO2_PIN 11
-#define SERVO3_PIN 12
-#define SERVO_ZERO_ANGLE 90
-
 // servo object for controlling fins
 Servo servo0, servo1, servo2, servo3;
 
+//------------------------------------------------------------------------------------------------
+//---------------------setup and loop constants---------------------------------------------------
 const unsigned char UBLOX_INIT[] PROGMEM = {
   // Disable specific NMEA sentences
   //0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x24, // GxGGA off
@@ -60,10 +68,34 @@ const unsigned char UBLOX_INIT[] PROGMEM = {
 // rotate the true north frame into magnetic north frame
 const float q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
 
-
-float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4];
+//------------------------------------------------------------------------------------------------
+//---------------------setup and loop variables---------------------------------------------------
+// Enumeration of flight states
+enum FlightState: uint8_t {
+  _BEFORE_FLIGHT = 0,
+  _FLYING = 1,
+  _FALLING_FAST = 2,
+  _FALLING_SLOW = 3,
+  _MAIN_COMP_SAFE_FAIL = 4
+};
+FlightState FLIGHT_STATE = FlightState::_BEFORE_FLIGHT;
+float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4], deltat_sec;
 int32_t lat_cm, lon_cm;
 uint32_t before = 0, deltat;
+
+//------------------------------------------------------------------------------------------------
+//---------------------other functions------------------------------------------------------------
+void makeFinCorrections() {
+  // servo0 looks towards +X, servo2 looks towards -X
+  servo0.write(SERVO_ZERO_ANGLE - ux + uz);
+  servo2.write(SERVO_ZERO_ANGLE + ux + uz);
+  // servo1 looks towards -Y, servo3 looks towards +Y
+  servo1.write(SERVO_ZERO_ANGLE + uy + uz);
+  servo3.write(SERVO_ZERO_ANGLE - uy + uz);
+}
+
+//------------------------------------------------------------------------------------------------
+//---------------------setup function-------------------------------------------------------------
 void setup() {
   // attach servos
   servo0.attach(SERVO0_PIN);
@@ -71,15 +103,12 @@ void setup() {
   servo2.attach(SERVO2_PIN);
   servo3.attach(SERVO3_PIN);
   // give initial values of 0 degrees
-  servo0.write(SERVO_ZERO_ANGLE);
-  servo1.write(SERVO_ZERO_ANGLE);
-  servo2.write(SERVO_ZERO_ANGLE);
-  servo3.write(SERVO_ZERO_ANGLE);
+  ux = 0.0; uy = 0.0; uz = 0.0;
+  makeFinCorrections();
 
   // serial to display data
   Serial.begin(2000000);
   while(!Serial);
-  ss.begin(GPS_BAUD_RATE);
 
   // configure the ublox gps module
   for (size_t i = 0; i < sizeof(UBLOX_INIT); i++) {                        
@@ -149,8 +178,20 @@ void setup() {
   }
   madgwick_beta = MadgwickBetaDef;
 
-  //TODO: Send watchdog signal by RF transmitter to the secondary flight computer
-  //TODO: Wait for packet sent (ACK)
+  // Make sure our GPS module uses at least 4 GPS satellites
+  bool at_least_4_sat = false;
+  ss.begin(GPS_BAUD_RATE);
+  while (!at_least_4_sat) {
+    while (ss.available() > 0){
+      gps.encode(ss.read());
+      if (gps.satellites.isUpdated() && gps.satellites.value() >= 4){
+        at_least_4_sat = true;
+        break;
+      }
+    }
+  }
+
+  //TODO: Send _BEFORE_FLIGHT signal to the backup computer, and wait for transmission!
   //TODO: Let the ground station know that flight computer is READY.
 
   // wait for high acceleration
@@ -162,12 +203,19 @@ void setup() {
       if ((ax*ax + ay*ay + az*az) > TAKEOFF_ACCELERATION_SQ) break;
     }
   }
+
+  // The rocket is flying now
+  FLIGHT_STATE = FlightState::_FLYING;
 }
 
-//-------------------------------------------------------------------------------------------------
-
+//-----------------------------------------------------------------------------------------------
+//---------------------loop function-------------------------------------------------------------
 void loop() {
-  float deltat_sec;
+  bool flight_data_updated = false;
+
+  //TODO: Send FLIGHT_STATE to the secondary flight computer EVERY 500ms!
+
+  // Attempt to update flight data (orientation, position and velocity) from IMU
   if(IMU.isDataReady()) {
     deltat = micros() - before;
     deltat_sec = deltat / 1000000.0;
@@ -204,24 +252,36 @@ void loop() {
     // display the data
     Serial.print("dt:\t");
     Serial.print(deltat);
-    Serial.print("\tRoll:\t");
-    Serial.print(roll, 4);
-    Serial.print("\tPitch:\t");
-    Serial.print(pitch, 4);
-    Serial.print("\tYaw:\t");
-    Serial.print(yaw, 4);
+    //Serial.print("\tRoll:\t");
+    //Serial.print(roll, 4);
+    //Serial.print("\tPitch:\t");
+    //Serial.print(pitch, 4);
+    //Serial.print("\tYaw:\t");
+    //Serial.print(yaw, 4);
     Serial.print("\tX:\t");
     Serial.print(lat_filter.get_pos_cm());
     Serial.print("\tY:\t");
     Serial.print(lon_filter.get_pos_cm());
     Serial.print("\tZ:\t");
-    Serial.println(alt_filter.get_pos_cm());
-    Serial.flush();
+    Serial.print(alt_filter.get_pos_cm());
+    Serial.print("\tVX:\t");
+    Serial.print(lat_filter.get_vel_cm_per_sec());
+    Serial.print("\tVY:\t");
+    Serial.print(lon_filter.get_vel_cm_per_sec());
+    Serial.print("\tVZ:\t");
+    Serial.println(alt_filter.get_vel_cm_per_sec());
     before += deltat;
+
+    // move corrections to fins
+    makeFinCorrections();
+    flight_data_updated = true;
   }
 
-  // move servos
-  servo0.write(SERVO_ZERO_ANGLE + uz);
+  // If imu did not update for 500ms, then rotate fins back to 0 degrees
+  if (micros() - before > 500000) {
+    ux = 0.0; uy = 0.0; uz = 0.0;
+    makeFinCorrections();
+  }
 
   // get gps data if available and 'update' the position and velocity 'prediction's
   while (ss.available() > 0){
@@ -231,6 +291,14 @@ void loop() {
       lat_filter.update(lat_cm);
       lon_filter.update(lon_cm);
       alt_filter.update(gps.altitude.value());
+
+      flight_data_updated = true;
     }
   }
+
+  //TODO: If v_z variance is too high, then send _MAIN_COMP_SAFE_FAIL to 
+  //      backup computer to fail safely! Then loop here forever.
+
+  //TODO: Modify FLIGHT_STATE according to the altitude data IF 'flight_data_updated'
+  //TODO: If recovery conditions are met, then initiate recovery (drogue&main recovery)!
 }

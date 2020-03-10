@@ -12,7 +12,7 @@
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
-MPU9250 IMU(Wire,0x68);
+MPU9250 IMU(Wire, 0x68);
 int status;
 
 // a PID controller object
@@ -86,7 +86,7 @@ void setup() {
     ss.write( pgm_read_byte(UBLOX_INIT+i) );
   };
 
-  // start communication with IMU 
+  // start communication with IMU
   status = IMU.begin();
   if (status < 0) {
     Serial.println("IMU initialization unsuccessful");
@@ -115,13 +115,13 @@ void setup() {
      {0.0012955016372647,0.00387494101216781,0.987478872856534}});
 
   // mag bias
-  IMU.setMagCalX(-31.775899);
-  IMU.setMagCalY(13.935825);
-  IMU.setMagCalZ(16.369178);
+  IMU.setMagCalX(-36.837011);
+  IMU.setMagCalY(16.950685);
+  IMU.setMagCalZ(12.054957);
   IMU.setMagTM(
-    {{0.027530,0.000372,-0.003384},
-     {0.000372,0.027866,0.000568},
-     {-0.003384,0.000568,0.027386}});
+    {{0.023264,0.000352,-0.002885},
+     {0.000352,0.023664,0.000622},
+     {-0.002885,0.000622,0.022273}});
 
   // calibrate the estimated orientation
   Serial.println("Calibrating orientation estimate, wait please!");
@@ -207,16 +207,17 @@ void loop() {
     Serial.print(pitch, 4);
     Serial.print("\tYaw:\t");
     Serial.print(yaw, 4);
-    Serial.print("\tux:\t");
-    Serial.print(ux, 4);
-    Serial.print("\tuy:\t");
-    Serial.print(uy, 4);
-    Serial.print("\tuz:\t");
-    Serial.println(uz, 4);
+    Serial.print("\tX:\t");
+    Serial.print(lat_filter.get_pos_cm());
+    Serial.print("\tY:\t");
+    Serial.print(lon_filter.get_pos_cm());
+    Serial.print("\tZ:\t");
+    Serial.println(alt_filter.get_pos_cm());
     Serial.flush();
     before += deltat;
   }
 
+  // move servos
   servo0.write(SERVO_ZERO_ANGLE + uz);
 
   // get gps data if available and 'update' the position and velocity 'prediction's

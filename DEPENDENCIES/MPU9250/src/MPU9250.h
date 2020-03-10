@@ -26,7 +26,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include <Arduino.h>
 #include <Wire.h>    // I2C library
-#include <SPI.h>     // SPI library
+
+#ifndef I2C_RATE
+#define I2C_RATE 400000
+#endif
 
 class MPU9250 {
   public:
@@ -69,7 +72,6 @@ class MPU9250 {
       LP_ACCEL_ODR_500HZ = 11
     };
     MPU9250(TwoWire &bus,uint8_t address);
-    MPU9250(SPIClass &bus,uint8_t csPin);
     int begin();
     int setAccelRange(AccelRange range);
     int setGyroRange(GyroRange range);
@@ -117,16 +119,7 @@ class MPU9250 {
     // i2c
     uint8_t _address;
     TwoWire *_i2c;
-    static const uint32_t _i2cRate = 400000; // 400 kHz
     size_t _numBytes; // number of bytes received from I2C
-    // spi
-    SPIClass *_spi;
-    uint8_t _csPin;
-    bool _useSPI;
-    bool _useSPIHS;
-    static const uint8_t SPI_READ = 0x80;
-    static const uint32_t SPI_LS_CLOCK = 1000000;  // 1 MHz
-    static const uint32_t SPI_HS_CLOCK = 15000000; // 15 MHz
     // buffer for reading from sensor
     uint8_t _buffer[21];
     // data counts

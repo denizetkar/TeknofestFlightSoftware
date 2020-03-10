@@ -1,5 +1,4 @@
 MPU9250	KEYWORD1
-MPU9250FIFO	KEYWORD1
 begin	KEYWORD2
 setAccelRange	KEYWORD2
 setGyroRange	KEYWORD2
@@ -7,8 +6,7 @@ setDlpfBandwidth	KEYWORD2
 setSrd	KEYWORD2
 enableDataReadyInterrupt	KEYWORD2
 disableDataReadyInterrupt	KEYWORD2
-enableWakeOnMotion	KEYWORD2
-enableFifo	KEYWORD2
+isDataReady	KEYWORD2
 readSensor	KEYWORD2
 getAccelX_g	KEYWORD2
 getAccelY_g	KEYWORD2
@@ -22,17 +20,6 @@ getMagY_uT	KEYWORD2
 getMagZ_uT	KEYWORD2
 getMagTM	KEYWORD2
 getTemp_C	KEYWORD2
-readFifo	KEYWORD2
-getFifoAccelX_g	KEYWORD2
-getFifoAccelY_g	KEYWORD2
-getFifoAccelZ_g	KEYWORD2
-getFifoGyroX_rads	KEYWORD2
-getFifoGyroY_rads	KEYWORD2
-getFifoGyroZ_rads	KEYWORD2
-getFifoMagX_uT	KEYWORD2
-getFifoMagY_uT	KEYWORD2
-getFifoMagZ_uT	KEYWORD2
-getFifoTemp_C	KEYWORD2
 calibrateGyro	KEYWORD2
 getGyroBiasX_rads	KEYWORD2
 getGyroBiasY_rads	KEYWORD2

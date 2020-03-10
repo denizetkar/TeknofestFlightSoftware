@@ -148,6 +148,9 @@ void setup() {
     }
   }
   madgwick_beta = MadgwickBetaDef;
+
+  //TODO: Send watchdog signal by RF transmitter to the secondary flight computer
+  //TODO: Wait for packet sent (ACK)
   //TODO: Let the ground station know that flight computer is READY.
 
   // wait for high acceleration

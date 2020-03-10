@@ -1,5 +1,5 @@
 /*
-Basic_SPI.ino
+Interrupt_I2C.ino
 Brian R Taylor
 brian.taylor@bolderflight.com
 
@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include "MPU9250.h"
 
-// an MPU9250 object with the MPU-9250 sensor on SPI bus 0 and chip select pin 10
-MPU9250 IMU(SPI,10);
+// an MPU9250 object with the MPU-9250 sensor on I2C bus 0 and chip select pin 10
+MPU9250 IMU(Wire,0x68);
 int status;
 
 void setup() {
@@ -41,9 +41,20 @@ void setup() {
     Serial.println(status);
     while(1) {}
   }
+  // setting DLPF bandwidth to 20 Hz
+  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
+  // setting SRD to 19 for a 50 Hz update rate
+  IMU.setSrd(19);
+  // enabling the data ready interrupt
+  IMU.enableDataReadyInterrupt();
+  // attaching the interrupt to microcontroller pin 1
+  pinMode(1,INPUT);
+  attachInterrupt(1,getIMU,RISING);
 }
 
-void loop() {
+void loop() {}
+
+void getIMU(){ 
   // read the sensor
   IMU.readSensor();
   // display the data
@@ -66,5 +77,4 @@ void loop() {
   Serial.print(IMU.getMagZ_uT(),6);
   Serial.print("\t");
   Serial.println(IMU.getTemperature_C(),6);
-  delay(100);
 }

@@ -116,11 +116,10 @@ void setup() {
   };
 
   // start communication with IMU
+  Serial.println("Initializing IMU...");
   status = IMU.begin();
   if (status < 0) {
-    Serial.println("IMU initialization unsuccessful");
-    Serial.println("Check IMU wiring or try cycling power");
-    Serial.print("Status: ");
+    Serial.print("IMU initialization unsuccessful: ");
     Serial.println(status);
     while(1);
   }
@@ -153,7 +152,7 @@ void setup() {
      {-0.002885,0.000622,0.022273}});
 
   // calibrate the estimated orientation
-  Serial.println("Calibrating orientation estimate, wait please!");
+  Serial.println("Calibrating orientation estimate...");
   uint32_t calib_start = millis();
   madgwick_beta = 4.0;
   while (true) {
@@ -171,20 +170,24 @@ void setup() {
 
       // calibration is done after about 3 seconds
       if (millis() - calib_start > 3000) {
-        Serial.println("Calibration done.");
         break;
       }
     }
   }
   madgwick_beta = MadgwickBetaDef;
 
-  // Make sure our GPS module uses at least 4 GPS satellites
+  // Make sure our GPS module uses at least 4 GPS satellites and initialize current position.
+  Serial.println("Searching for at least 4 GPS satellites...");
   bool at_least_4_sat = false;
   ss.begin(GPS_BAUD_RATE);
   while (!at_least_4_sat) {
     while (ss.available() > 0){
       gps.encode(ss.read());
-      if (gps.satellites.isUpdated() && gps.satellites.value() >= 4){
+      if (gps.satellites.isUpdated() && gps.satellites.value() >= 4 && gps.location.isUpdated()){
+        lat_lon_to_x_y_cm(gps.location.lat(), gps.location.lng(), lat_cm, lon_cm);
+        lat_filter.set_pos_cm(lat_cm);
+        lon_filter.set_pos_cm(lon_cm);
+        alt_filter.set_pos_cm(gps.altitude.value());
         at_least_4_sat = true;
         break;
       }
@@ -195,6 +198,7 @@ void setup() {
   //TODO: Let the ground station know that flight computer is READY.
 
   // wait for high acceleration
+  Serial.println("Waiting for liftoff to begin loop...");
   while (true) {
     if(IMU.isDataReady()) {
       // read the sensor
@@ -206,6 +210,7 @@ void setup() {
 
   // The rocket is flying now
   FLIGHT_STATE = FlightState::_FLYING;
+  before = micros();
 }
 
 //-----------------------------------------------------------------------------------------------
@@ -225,8 +230,8 @@ void loop() {
     // Update rotation of the sensor frame with respect to the NWU frame
     // where N is magnetic north, W is west and U is up.
     MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
-                       IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
-                       IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat_sec);
+                       0, 0, 0,
+                       0, 0, 0, deltat_sec);
 
     // make magnetic declination corrections to q_a
     quaternion_prod(q_magnetic_declination, q_a, q_a_tn);
@@ -257,7 +262,7 @@ void loop() {
     //Serial.print("\tPitch:\t");
     //Serial.print(pitch, 4);
     //Serial.print("\tYaw:\t");
-    //Serial.print(yaw, 4);
+    //Serial.println(yaw, 4);
     Serial.print("\tX:\t");
     Serial.print(lat_filter.get_pos_cm());
     Serial.print("\tY:\t");

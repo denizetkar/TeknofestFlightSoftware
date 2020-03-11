@@ -3,15 +3,12 @@
 
 #include <Arduino.h>
 
-void lat_lon_to_x_y_cm(float, float, int32_t&, int32_t&);
-int32_t safe_int_add(int32_t, int32_t);
-
 class EarthPositionFilter
 {
   protected:
     // state variables (position, velocity), (x)
-    int32_t pos_cm;
-    float vel_cm_per_sec;
+    int64_t pos_mm;
+    float vel_mm_per_sec;
     // state covariance matrix, (P)
     float P[2][2];
     // state transition matrix, (F)
@@ -31,19 +28,19 @@ class EarthPositionFilter
 
   public:
     EarthPositionFilter() :
-      pos_cm{0}, vel_cm_per_sec{0.0},
+      pos_mm{0}, vel_mm_per_sec{0.0},
       P{10000000.0, 0.0, 0.0, 10000000.0},
-      proc_var{100.0}, R{40000.0} {}
+      proc_var{1000000.0}, R{4000000.0} {}
     // getter functions
-    int32_t get_pos_cm();
-    float   get_vel_cm_per_sec();
+    int64_t get_pos_mm();
+    float   get_vel_mm_per_sec();
     void    get_P(float (&)[2][2]);
     float   get_deltat();
     float   get_proc_var();
     float   get_R();
     // setter functions
-    void    set_pos_cm(int32_t);
-    void    set_vel_cm_per_sec(float);
+    void    set_pos_mm(int64_t);
+    void    set_vel_mm_per_sec(float);
     void    set_P(const float (&&)[2][2]);
     void    set_deltat(float);
     void    set_proc_var(float);
@@ -51,7 +48,7 @@ class EarthPositionFilter
 
     // predict and update functions
     void predict(float);
-    void update(int32_t);
+    void update(int64_t);
 };
 
 #endif  // EARTH_POSITION_FILTER_H

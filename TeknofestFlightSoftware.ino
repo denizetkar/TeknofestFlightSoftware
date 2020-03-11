@@ -1,17 +1,19 @@
 //------------------------------------------------------------------------------------------------
 //---------------------includes-------------------------------------------------------------------
+
 #include <MPU9250.h>
 #include "MadgwickAHRS.h"
 #include "QuaternionPID.h"
 
-#include <TinyGPS++.h>
-#include <NeoSWSerial.h>
+#include "Neo6MGPS.h"
 
 #include "EarthPositionFilter.h"
 #include <Servo.h>
 
+#include "print_64bit.h"
 //------------------------------------------------------------------------------------------------
 //---------------------definitions----------------------------------------------------------------
+
 //TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
@@ -27,6 +29,7 @@
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop objects-----------------------------------------------------
+
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 MPU9250 IMU(Wire, 0x68);
 int status;
@@ -34,10 +37,8 @@ int status;
 // a PID controller object
 QuaternionPID controller{ 50.0, 0.5, 1.0 };
 
-// The TinyGPS++ object
-TinyGPSPlus gps;
-// The serial connection to the GPS device
-NeoSWSerial ss(GPS_TX_PIN, GPS_RX_PIN);
+// The Neo-6M GPS object
+Neo6MGPS neo6m(GPS_TX_PIN, GPS_RX_PIN);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
@@ -47,21 +48,6 @@ Servo servo0, servo1, servo2, servo3;
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop constants---------------------------------------------------
-const unsigned char UBLOX_INIT[] PROGMEM = {
-  // Disable specific NMEA sentences
-  //0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x24, // GxGGA off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x01,0x2B, // GxGLL off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x02,0x00,0x00,0x00,0x00,0x00,0x01,0x02,0x32, // GxGSA off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x03,0x00,0x00,0x00,0x00,0x00,0x01,0x03,0x39, // GxGSV off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x04,0x00,0x00,0x00,0x00,0x00,0x01,0x04,0x40, // GxRMC off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x05,0x00,0x00,0x00,0x00,0x00,0x01,0x05,0x47, // GxVTG off
-  0xB5,0x62,0x06,0x01,0x08,0x00,0xF0,0x08,0x00,0x00,0x00,0x00,0x00,0x01,0x08,0x5C, // GxZDA off
-
-  // Rate (pick one)
-  0xB5,0x62,0x06,0x08,0x06,0x00,0x64,0x00,0x01,0x00,0x01,0x00,0x7A,0x12, //(10Hz)
-  //0xB5,0x62,0x06,0x08,0x06,0x00,0xC8,0x00,0x01,0x00,0x01,0x00,0xDE,0x6A, //(5Hz)
-  //0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, //(1Hz)
-};
 
 // There is approximately 5.5 degrees East magnetic declination in Turkey on 24.02.2020.
 // ( cos(-5.5*pi/180), 0, 0, sin(-5.5*pi/180) ) is the rotation quaternion required to
@@ -70,6 +56,7 @@ const float q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.0958457525
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop variables---------------------------------------------------
+
 // Enumeration of flight states
 enum FlightState: uint8_t {
   _BEFORE_FLIGHT = 0,
@@ -80,11 +67,12 @@ enum FlightState: uint8_t {
 };
 FlightState FLIGHT_STATE = FlightState::_BEFORE_FLIGHT;
 float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4], deltat_sec;
-int32_t lat_cm, lon_cm;
+int64_t lat_mm, lon_mm, alt_mm;
 uint32_t before = 0, deltat;
 
 //------------------------------------------------------------------------------------------------
 //---------------------other functions------------------------------------------------------------
+
 void makeFinCorrections() {
   // servo0 looks towards +X, servo2 looks towards -X
   servo0.write(SERVO_ZERO_ANGLE - ux + uz);
@@ -96,6 +84,7 @@ void makeFinCorrections() {
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup function-------------------------------------------------------------
+
 void setup() {
   // attach servos
   servo0.attach(SERVO0_PIN);
@@ -110,10 +99,7 @@ void setup() {
   Serial.begin(2000000);
   while(!Serial);
 
-  // configure the ublox gps module
-  for (size_t i = 0; i < sizeof(UBLOX_INIT); i++) {                        
-    ss.write( pgm_read_byte(UBLOX_INIT+i) );
-  };
+  neo6m.begin(GPS_BAUD_RATE);
 
   // start communication with IMU
   Serial.println("Initializing IMU...");
@@ -153,23 +139,21 @@ void setup() {
 
   // calibrate the estimated orientation
   Serial.println("Calibrating orientation estimate...");
-  uint32_t calib_start = millis();
+  uint16_t imu_data_count = 0;
   madgwick_beta = 4.0;
   while (true) {
     if(IMU.isDataReady()) {
-      deltat = micros() - before;
       // read the sensor
       IMU.readSensor();
   
       // Update rotation of the sensor frame with respect to the NWU frame
       // where N is magnetic north, W is west and U is up.
-      MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
+      MadgwickAHRSupdate(0, 0, 0,
                          IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
-                         IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat/1000000.0);
-      before += deltat;
-
+                         IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), 0.02);
+      imu_data_count++;
       // calibration is done after about 3 seconds
-      if (millis() - calib_start > 3000) {
+      if (imu_data_count >= 500) {
         break;
       }
     }
@@ -178,19 +162,13 @@ void setup() {
 
   // Make sure our GPS module uses at least 4 GPS satellites and initialize current position.
   Serial.println("Searching for at least 4 GPS satellites...");
-  bool at_least_4_sat = false;
-  ss.begin(GPS_BAUD_RATE);
-  while (!at_least_4_sat) {
-    while (ss.available() > 0){
-      gps.encode(ss.read());
-      if (gps.satellites.isUpdated() && gps.satellites.value() >= 4 && gps.location.isUpdated()){
-        lat_lon_to_x_y_cm(gps.location.lat(), gps.location.lng(), lat_cm, lon_cm);
-        lat_filter.set_pos_cm(lat_cm);
-        lon_filter.set_pos_cm(lon_cm);
-        alt_filter.set_pos_cm(gps.altitude.value());
-        at_least_4_sat = true;
-        break;
-      }
+  while (true) {
+    if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm)) {
+      // FOUND at least 4 GPS satellites!
+      lat_filter.set_pos_mm(lat_mm);
+      lon_filter.set_pos_mm(lon_mm);
+      alt_filter.set_pos_mm(alt_mm);
+      break;
     }
   }
 
@@ -215,6 +193,7 @@ void setup() {
 
 //-----------------------------------------------------------------------------------------------
 //---------------------loop function-------------------------------------------------------------
+
 void loop() {
   bool flight_data_updated = false;
 
@@ -247,12 +226,12 @@ void loop() {
     controller.compute(q_a_tn, gx, gy, gz, ux, uy, uz);
 
     // calculate roll, pitch, yaw
-    roll  = atan2(2.0 * (q_a_tn[0] * q_a_tn[1] + q_a_tn[2] * q_a_tn[3]), 1.0 - 2.0 * (q_a_tn[1] * q_a_tn[1] + q_a_tn[2] * q_a_tn[2]));
-    pitch = asin(2.0 * (q_a_tn[0] * q_a_tn[2] - q_a_tn[1] * q_a_tn[3]));
-    yaw   = atan2(2.0 * (q_a_tn[0] * q_a_tn[3] + q_a_tn[1] * q_a_tn[2]), 1.0 - 2.0 * (q_a_tn[2] * q_a_tn[2] + q_a_tn[3] * q_a_tn[3]));
-    roll *= (180.0 / PI);
-    pitch *= (180.0 / PI);
-    yaw   *= (180.0 / PI);
+    //roll  = atan2(2.0 * (q_a_tn[0] * q_a_tn[1] + q_a_tn[2] * q_a_tn[3]), 1.0 - 2.0 * (q_a_tn[1] * q_a_tn[1] + q_a_tn[2] * q_a_tn[2]));
+    //pitch = asin(2.0 * (q_a_tn[0] * q_a_tn[2] - q_a_tn[1] * q_a_tn[3]));
+    //yaw   = atan2(2.0 * (q_a_tn[0] * q_a_tn[3] + q_a_tn[1] * q_a_tn[2]), 1.0 - 2.0 * (q_a_tn[2] * q_a_tn[2] + q_a_tn[3] * q_a_tn[3]));
+    //roll *= (180.0 / PI);
+    //pitch *= (180.0 / PI);
+    //yaw   *= (180.0 / PI);
 
     // display the data
     Serial.print("dt:\t");
@@ -264,17 +243,17 @@ void loop() {
     //Serial.print("\tYaw:\t");
     //Serial.println(yaw, 4);
     Serial.print("\tX:\t");
-    Serial.print(lat_filter.get_pos_cm());
+    print_int64_t(lat_filter.get_pos_mm());
     Serial.print("\tY:\t");
-    Serial.print(lon_filter.get_pos_cm());
+    print_int64_t(lon_filter.get_pos_mm());
     Serial.print("\tZ:\t");
-    Serial.print(alt_filter.get_pos_cm());
+    print_int64_t(alt_filter.get_pos_mm());
     Serial.print("\tVX:\t");
-    Serial.print(lat_filter.get_vel_cm_per_sec());
+    Serial.print(lat_filter.get_vel_mm_per_sec());
     Serial.print("\tVY:\t");
-    Serial.print(lon_filter.get_vel_cm_per_sec());
+    Serial.print(lon_filter.get_vel_mm_per_sec());
     Serial.print("\tVZ:\t");
-    Serial.println(alt_filter.get_vel_cm_per_sec());
+    Serial.println(alt_filter.get_vel_mm_per_sec());
     before += deltat;
 
     // move corrections to fins
@@ -289,16 +268,12 @@ void loop() {
   }
 
   // get gps data if available and 'update' the position and velocity 'prediction's
-  while (ss.available() > 0){
-    gps.encode(ss.read());
-    if (gps.satellites.isUpdated() && gps.satellites.value() >= 4 && gps.location.isUpdated()){
-      lat_lon_to_x_y_cm(gps.location.lat(), gps.location.lng(), lat_cm, lon_cm);
-      lat_filter.update(lat_cm);
-      lon_filter.update(lon_cm);
-      alt_filter.update(gps.altitude.value());
+  if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm)) {
+    lat_filter.update(lat_mm);
+    lon_filter.update(lon_mm);
+    alt_filter.update(alt_mm);
 
-      flight_data_updated = true;
-    }
+    flight_data_updated = true;
   }
 
   //TODO: If v_z variance is too high, then send _MAIN_COMP_SAFE_FAIL to 

@@ -1,6 +1,8 @@
 #include <limits.h>
 #include "EarthPositionFilter.h"
 
+#define G_ACCEL_M_S2 9.807
+
 // getter functions
 int64_t EarthPositionFilter::get_pos_mm()
 {
@@ -56,9 +58,9 @@ void EarthPositionFilter::set_R(float _R)
 }
 
 // predict and update functions
-void EarthPositionFilter::predict(float accel_m_per_sec)
+void EarthPositionFilter::predict(float accel_in_g)
 {
-  float temp[2][2], accel_mm_per_sec = (accel_m_per_sec * 1000.0);
+  float temp[2][2], accel_mm_per_sec = (accel_in_g * G_ACCEL_M_S2 * 1000.0);
   // update state vector, (x)
   pos_mm += static_cast<int64_t>( round(dt * vel_mm_per_sec + 0.5 * accel_mm_per_sec * dt_dt) );
   vel_mm_per_sec += dt * accel_mm_per_sec;

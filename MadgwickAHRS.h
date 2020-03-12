@@ -16,7 +16,7 @@
 //---------------------------------------------------------------------------------------------------
 // Definitions
 
-#define MadgwickBetaDef   0.5   // 2 * proportional gain
+#define MadgwickBetaDef   0.25   // 2 * proportional gain
 //----------------------------------------------------------------------------------------------------
 // Variable declaration
 

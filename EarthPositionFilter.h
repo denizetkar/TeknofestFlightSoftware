@@ -30,7 +30,7 @@ class EarthPositionFilter
     EarthPositionFilter() :
       pos_mm{0}, vel_mm_per_sec{0.0},
       P{10000000.0, 0.0, 0.0, 10000000.0},
-      proc_var{1000000.0}, R{4000000.0} {}
+      proc_var{1000000.0}, R{9000000.0} {}
     // getter functions
     int64_t get_pos_mm();
     float   get_vel_mm_per_sec();

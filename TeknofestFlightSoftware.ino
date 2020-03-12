@@ -14,6 +14,8 @@
 //------------------------------------------------------------------------------------------------
 //---------------------definitions----------------------------------------------------------------
 
+#define IMU_CALIB_MAX_COUNT 500
+
 //TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
@@ -129,36 +131,35 @@ void setup() {
      {0.0012955016372647,0.00387494101216781,0.987478872856534}});
 
   // mag bias
-  IMU.setMagCalX(-36.837011);
-  IMU.setMagCalY(16.950685);
-  IMU.setMagCalZ(12.054957);
+  IMU.setMagCalX(-41.774776);
+  IMU.setMagCalY(16.272968);
+  IMU.setMagCalZ(13.122816);
   IMU.setMagTM(
-    {{0.023264,0.000352,-0.002885},
-     {0.000352,0.023664,0.000622},
-     {-0.002885,0.000622,0.022273}});
+    {{0.021566,0.000286,-0.002510},
+     {0.000286,0.022636,0.000479},
+     {-0.002510,0.000479,0.021711}});
 
   // calibrate the estimated orientation
   Serial.println("Calibrating orientation estimate...");
   uint16_t imu_data_count = 0;
-  madgwick_beta = 4.0;
   while (true) {
     if(IMU.isDataReady()) {
       // read the sensor
       IMU.readSensor();
-  
+
       // Update rotation of the sensor frame with respect to the NWU frame
       // where N is magnetic north, W is west and U is up.
       MadgwickAHRSupdate(0, 0, 0,
                          IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
-                         IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), 0.02);
+                         IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(),
+                         0.01 + 0.09 * cos(imu_data_count * PI / (2 * IMU_CALIB_MAX_COUNT)));
       imu_data_count++;
       // calibration is done after about 3 seconds
-      if (imu_data_count >= 500) {
+      if (imu_data_count >= IMU_CALIB_MAX_COUNT) {
         break;
       }
     }
   }
-  madgwick_beta = MadgwickBetaDef;
 
   // Make sure our GPS module uses at least 4 GPS satellites and initialize current position.
   Serial.println("Searching for at least 4 GPS satellites...");

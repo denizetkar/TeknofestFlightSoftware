@@ -43,11 +43,11 @@ void Neo6MGPS::begin(uint16_t GPS_BAUD_RATE)
 
 // This function attempts to read GPS module stream and search for 4 GPS satellites.
 // If not possible it returns false, otherwise it updates lat-lon-alt and returns true.
-bool Neo6MGPS::try_read_gps(int64_t& lat_mm, int64_t& lon_mm, int64_t& alt_mm)
+bool Neo6MGPS::try_read_gps(int64_t& lat_mm, int64_t& lon_mm, int64_t& alt_mm, uint8_t num_gps)
 {
   while (ss.available() > 0){
     gps.encode(ss.read());
-    if (gps.satellites.isUpdated() && gps.satellites.value() >= 4 && gps.location.isUpdated()){
+    if (gps.satellites.isUpdated() && gps.satellites.value() >= num_gps && gps.location.isUpdated()){
       lat_lon_to_x_y_mm(gps.location.lat(), gps.location.lng(), lat_mm, lon_mm);
       alt_mm = gps.altitude.value() * 10;
       return true;

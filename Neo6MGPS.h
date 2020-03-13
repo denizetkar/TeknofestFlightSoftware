@@ -15,7 +15,7 @@ class Neo6MGPS {
     Neo6MGPS(int, int);
 
     void begin(uint16_t);
-    bool try_read_gps(int64_t&, int64_t&, int64_t&);
+    bool try_read_gps(int64_t&, int64_t&, int64_t&, uint8_t num_gps=4);
 };
 
 #endif

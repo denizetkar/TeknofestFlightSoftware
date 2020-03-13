@@ -9,25 +9,18 @@ class QuaternionPID {
     float Kp, Ki, Kd;
     float integrals[3] = { 0.0, 0.0, 0.0 };
     float q_d[4] = {1.0, 0.0, 0.0, 0.0};
-    float Xmin, Xmax, Ymin, Ymax, Zmin, Zmax;
-
   public:
-    QuaternionPID(float _Kp, float _Ki, float _Kd,
-      float _Xmin = -20.0, float _Xmax = 20.0,
-      float _Ymin = -20.0, float _Ymax = 20.0,
-      float _Zmin = -20.0, float _Zmax = 20.0);
+    static const float Xmin = -20.0, Xmax = 20.0,
+                       Ymin = -20.0, Ymax = 20.0,
+                       Zmin = -20.0, Zmax = 20.0;
+
+    QuaternionPID(float _Kp, float _Ki, float _Kd);
 
     // getter and setter functions
     void getGains(float&, float&, float&);
     void setGains(float, float, float);
     void getDesiredQuaternion(float (&)[4]);
     void setDesiredQuaternion(const float (&&)[4]);
-    void getOutputLimitsX(float&, float&);
-    void getOutputLimitsY(float&, float&);
-    void getOutputLimitsZ(float&, float&);
-    void setOutputLimitsX(float, float);
-    void setOutputLimitsY(float, float);
-    void setOutputLimitsZ(float, float);
 
     // actual pid compute function
     void compute(const float (&)[4], float, float, float, float&, float&, float&);

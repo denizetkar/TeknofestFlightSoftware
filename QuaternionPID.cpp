@@ -27,14 +27,8 @@ void quaternion_prod(const float (&q_a)[4], const float (&q_b)[4], float (&res)[
 }
 
 // constructor
-QuaternionPID::QuaternionPID(float _Kp, float _Ki, float _Kd,
-  float _Xmin, float _Xmax,
-  float _Ymin, float _Ymax,
-  float _Zmin, float _Zmax) :
-  Kp { _Kp }, Ki { _Ki }, Kd { _Kd },
-  Xmin { _Xmin }, Xmax { _Xmax },
-  Ymin { _Ymin }, Ymax { _Ymax },
-  Zmin { _Zmin }, Zmax { _Zmax }
+QuaternionPID::QuaternionPID(float _Kp, float _Ki, float _Kd) :
+  Kp { _Kp }, Ki { _Ki }, Kd { _Kd }
 {
   if (_Kp < 0.0) {
     Kp = 0.0;
@@ -64,33 +58,6 @@ void QuaternionPID::getDesiredQuaternion(float (&_q_d)[4]) {
 }
 void QuaternionPID::setDesiredQuaternion(const float (&&_q_d)[4]) {
   memcpy(&q_d, &_q_d, sizeof(q_d));
-}
-void QuaternionPID::getOutputLimitsX(float &_Xmin, float &_Xmax) {
-  _Xmin = Xmin;
-  _Xmax = Xmax;
-}
-void QuaternionPID::getOutputLimitsY(float &_Ymin, float &_Ymax) {
-  _Ymin = Ymin;
-  _Ymax = Ymax;
-}
-void QuaternionPID::getOutputLimitsZ(float &_Zmin, float &_Zmax) {
-  _Zmin = Zmin;
-  _Zmax = Zmax;
-}
-void QuaternionPID::setOutputLimitsX(float _Xmin, float _Xmax) {
-  if (_Xmin >= _Xmax) return;
-  Xmin = _Xmin;
-  Xmax = _Xmax;
-}
-void QuaternionPID::setOutputLimitsY(float _Ymin, float _Ymax) {
-  if (_Ymin >= _Ymax) return;
-  Ymin = _Ymin;
-  Ymax = _Ymax;
-}
-void QuaternionPID::setOutputLimitsZ(float _Zmin, float _Zmax) {
-  if (_Zmin >= _Zmax) return;
-  Zmin = _Zmin;
-  Zmax = _Zmax;
 }
 
 // actual pid compute function

@@ -23,7 +23,6 @@
 
 float madgwick_beta = MadgwickBetaDef;               // 2 * proportional gain (Kp)
 float q_a[4] = { 1.0, 0.0, 0.0, 0.0 };  // quaternion of sensor frame relative to auxiliary frame
-float s_a[4];  // errors from absolute orientation
 
 //====================================================================================================
 // Functions

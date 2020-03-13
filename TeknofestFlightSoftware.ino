@@ -5,16 +5,21 @@
 #include "MadgwickAHRS.h"
 #include "QuaternionPID.h"
 
+//TODO: After porting the code to STM32: Read positions from GPS in meters!
 #include "Neo6MGPS.h"
 
+//TODO: After porting the code to STM32: Turn int64_t variables into 'double' and track position in meters!
 #include "EarthPositionFilter.h"
 #include <Servo.h>
 
+//TODO: After porting the code to STM32: No longer use "print_64bit.h"
 #include "print_64bit.h"
+#include "BitQueue.h"
 //------------------------------------------------------------------------------------------------
 //---------------------definitions----------------------------------------------------------------
 
 #define IMU_CALIB_MAX_COUNT 500
+#define MIN_NUM_GPS 5
 
 //TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
@@ -28,6 +33,10 @@
 #define SERVO2_PIN 11
 #define SERVO3_PIN 12
 #define SERVO_ZERO_ANGLE 90
+
+#define VZ_NEG_Q_BIT_SIZE 192
+//TODO: After porting the code to STM32: Change this altitude into meters!
+#define MAIN_RECOVERY_ALTITUDE 600000
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop objects-----------------------------------------------------
@@ -47,6 +56,9 @@ EarthPositionFilter lat_filter, lon_filter, alt_filter;
 
 // servo object for controlling fins
 Servo servo0, servo1, servo2, servo3;
+
+// Bit Queue for storing negativity condition of the latest measured Vz values
+BitQueue<VZ_NEG_Q_BIT_SIZE> vz_neg_q;
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop constants---------------------------------------------------
@@ -69,8 +81,10 @@ enum FlightState: uint8_t {
 };
 FlightState FLIGHT_STATE = FlightState::_BEFORE_FLIGHT;
 float roll, pitch, yaw, gx, gy, gz, ax, ay, az, ux, uy, uz, q_a_tn[4], deltat_sec;
-int64_t lat_mm, lon_mm, alt_mm;
+//TODO: After porting the code to STM32: Change below positions to 'double' and into meters!
+int64_t lat_mm, lon_mm, alt_mm, ground_alt_mm;
 uint32_t before = 0, deltat;
+uint8_t vz_neg_count = 0;
 
 //------------------------------------------------------------------------------------------------
 //---------------------other functions------------------------------------------------------------
@@ -88,7 +102,12 @@ void makeFinCorrections() {
 //---------------------setup function-------------------------------------------------------------
 
 void setup() {
+  // serial to display data
+  Serial.begin(2000000);
+  while (!Serial);
+
   // attach servos
+  Serial.println("Initializing the fin controls...");
   servo0.attach(SERVO0_PIN);
   servo1.attach(SERVO1_PIN);
   servo2.attach(SERVO2_PIN);
@@ -97,10 +116,7 @@ void setup() {
   ux = 0.0; uy = 0.0; uz = 0.0;
   makeFinCorrections();
 
-  // serial to display data
-  Serial.begin(2000000);
-  while(!Serial);
-
+  Serial.println("Initializing GPS module...");
   neo6m.begin(GPS_BAUD_RATE);
 
   // start communication with IMU
@@ -161,14 +177,15 @@ void setup() {
     }
   }
 
-  // Make sure our GPS module uses at least 4 GPS satellites and initialize current position.
-  Serial.println("Searching for at least 4 GPS satellites...");
+  // Make sure our GPS module uses enough GPS satellites and initialize current position.
+  Serial.println("Searching for GPS satellites...");
   while (true) {
-    if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm)) {
+    if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm, MIN_NUM_GPS)) {
       // FOUND at least 4 GPS satellites!
       lat_filter.set_pos_mm(lat_mm);
       lon_filter.set_pos_mm(lon_mm);
       alt_filter.set_pos_mm(alt_mm);
+      ground_alt_mm = alt_mm;
       break;
     }
   }
@@ -177,7 +194,7 @@ void setup() {
   //TODO: Let the ground station know that flight computer is READY.
 
   // wait for high acceleration
-  Serial.println("Waiting for liftoff to begin loop...");
+  Serial.println("Waiting for liftoff before loop...");
   while (true) {
     if(IMU.isDataReady()) {
       // read the sensor
@@ -186,6 +203,7 @@ void setup() {
       if ((ax*ax + ay*ay + az*az) > TAKEOFF_ACCELERATION_SQ) break;
     }
   }
+  Serial.println("FLYING!");
 
   // The rocket is flying now
   FLIGHT_STATE = FlightState::_FLYING;
@@ -222,27 +240,9 @@ void loop() {
     lon_filter.set_deltat(deltat_sec); lon_filter.predict(-ay);
     alt_filter.set_deltat(deltat_sec); alt_filter.predict(az - 1.0);
 
-    // find corrective actions ux, uy, uz
-    rotate_vector_by_quaternion(q_magnetic_declination, IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(), gx, gy, gz);
-    controller.compute(q_a_tn, gx, gy, gz, ux, uy, uz);
-
-    // calculate roll, pitch, yaw
-    //roll  = atan2(2.0 * (q_a_tn[0] * q_a_tn[1] + q_a_tn[2] * q_a_tn[3]), 1.0 - 2.0 * (q_a_tn[1] * q_a_tn[1] + q_a_tn[2] * q_a_tn[2]));
-    //pitch = asin(2.0 * (q_a_tn[0] * q_a_tn[2] - q_a_tn[1] * q_a_tn[3]));
-    //yaw   = atan2(2.0 * (q_a_tn[0] * q_a_tn[3] + q_a_tn[1] * q_a_tn[2]), 1.0 - 2.0 * (q_a_tn[2] * q_a_tn[2] + q_a_tn[3] * q_a_tn[3]));
-    //roll *= (180.0 / PI);
-    //pitch *= (180.0 / PI);
-    //yaw   *= (180.0 / PI);
-
     // display the data
     Serial.print("dt:\t");
     Serial.print(deltat);
-    //Serial.print("\tRoll:\t");
-    //Serial.print(roll, 4);
-    //Serial.print("\tPitch:\t");
-    //Serial.print(pitch, 4);
-    //Serial.print("\tYaw:\t");
-    //Serial.println(yaw, 4);
     Serial.print("\tX:\t");
     print_int64_t(lat_filter.get_pos_mm());
     Serial.print("\tY:\t");
@@ -257,8 +257,16 @@ void loop() {
     Serial.println(alt_filter.get_vel_mm_per_sec());
     before += deltat;
 
-    // move corrections to fins
-    makeFinCorrections();
+    if (FLIGHT_STATE == FlightState::_FLYING) {
+      // find corrective actions ux, uy, uz
+      rotate_vector_by_quaternion(q_magnetic_declination,
+                                  IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
+                                  gx, gy, gz);
+      controller.compute(q_a_tn, gx, gy, gz, ux, uy, uz);
+      // move corrections to fins
+      makeFinCorrections();
+    }
+
     flight_data_updated = true;
   }
 
@@ -277,9 +285,30 @@ void loop() {
     flight_data_updated = true;
   }
 
-  //TODO: If v_z variance is too high, then send _MAIN_COMP_SAFE_FAIL to 
-  //      backup computer to fail safely! Then loop here forever.
+  //TODO: If v_z variance is too high OR flight data has not been updated for 1 second,
+  //      then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely! Then loop here forever.
 
-  //TODO: Modify FLIGHT_STATE according to the altitude data IF 'flight_data_updated'
-  //TODO: If recovery conditions are met, then initiate recovery (drogue&main recovery)!
+  if (flight_data_updated) {
+    switch (FLIGHT_STATE) {
+      case FlightState::_FLYING:
+        uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_mm_per_sec() <= 0.0);
+        vz_neg_count -= vz_neg_q.push_first_pop_last(first_bit);
+        vz_neg_count += first_bit;
+        if (vz_neg_count > VZ_NEG_Q_BIT_SIZE * 2 / 3) {
+          //TODO: Initiate drogue recovery HERE!!!!!!!!!!!!!!
+          FLIGHT_STATE = FlightState::_FALLING_FAST;
+        }
+        break;
+      case FlightState::_FALLING_FAST:
+        if (alt_filter.get_pos_mm() < ground_alt_mm + MAIN_RECOVERY_ALTITUDE) {
+          //TODO: Initiate main recovery HERE!!!!!!!!!!!!!!
+          FLIGHT_STATE = FlightState::_FALLING_SLOW;
+        }
+        break;
+      case FlightState::_FALLING_SLOW:
+        break;
+      case FlightState::_MAIN_COMP_SAFE_FAIL:
+        break;
+    }
+  }
 }

@@ -358,6 +358,15 @@ bool MPU9250::isDataReady() {
   return (res & RAW_DATA_RDY_INT) == RAW_DATA_RDY_INT;
 }
 
+/* attempts to read data if it is available, returns true if success otherwise false */
+bool MPU9250::tryReadSensor() {
+  if (isDataReady()) {
+    readSensor();
+    return true;
+  }
+  return false;
+}
+
 /* reads the most current data from MPU9250 and stores in buffer */
 int MPU9250::readSensor() {
   float X, Y, Z;

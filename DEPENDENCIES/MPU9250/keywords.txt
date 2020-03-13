@@ -7,6 +7,7 @@ setSrd	KEYWORD2
 enableDataReadyInterrupt	KEYWORD2
 disableDataReadyInterrupt	KEYWORD2
 isDataReady	KEYWORD2
+tryReadSensor	KEYWORD2
 readSensor	KEYWORD2
 getAccelX_g	KEYWORD2
 getAccelY_g	KEYWORD2

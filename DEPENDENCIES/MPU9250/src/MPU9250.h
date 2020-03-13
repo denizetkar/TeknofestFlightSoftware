@@ -80,6 +80,7 @@ class MPU9250 {
     int enableDataReadyInterrupt();
     int disableDataReadyInterrupt();
     bool isDataReady();
+    bool tryReadSensor();
     int readSensor();
     float getAccelX_g();
     float getAccelY_g();

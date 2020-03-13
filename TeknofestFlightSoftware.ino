@@ -159,9 +159,8 @@ void setup() {
   Serial.println("Calibrating orientation estimate...");
   uint16_t imu_data_count = 0;
   while (true) {
-    if(IMU.isDataReady()) {
-      // read the sensor
-      IMU.readSensor();
+    // try to read the sensor
+    if(IMU.tryReadSensor()) {
 
       // Update rotation of the sensor frame with respect to the NWU frame
       // where N is magnetic north, W is west and U is up.
@@ -196,9 +195,8 @@ void setup() {
   // wait for high acceleration
   Serial.println("Waiting for liftoff before loop...");
   while (true) {
-    if(IMU.isDataReady()) {
-      // read the sensor
-      IMU.readSensor();
+    // try to read the sensor
+    if(IMU.tryReadSensor()) {
       ax = IMU.getAccelX_g(); ay = IMU.getAccelY_g(); az = IMU.getAccelZ_g();
       if ((ax*ax + ay*ay + az*az) > TAKEOFF_ACCELERATION_SQ) break;
     }
@@ -219,11 +217,9 @@ void loop() {
   //TODO: Send FLIGHT_STATE to the secondary flight computer EVERY 500ms!
 
   // Attempt to update flight data (orientation, position and velocity) from IMU
-  if(IMU.isDataReady()) {
+  if(IMU.tryReadSensor()) {
     deltat = micros() - before;
     deltat_sec = deltat / 1000000.0;
-    // read the sensor
-    IMU.readSensor();
 
     // Update rotation of the sensor frame with respect to the NWU frame
     // where N is magnetic north, W is west and U is up.
@@ -270,13 +266,7 @@ void loop() {
     flight_data_updated = true;
   }
 
-  // If imu did not update for 500ms, then rotate fins back to 0 degrees
-  if (micros() - before > 500000) {
-    ux = 0.0; uy = 0.0; uz = 0.0;
-    makeFinCorrections();
-  }
-
-  // get gps data if available and 'update' the position and velocity 'prediction's
+  // get GPS data if available and 'update' the position and velocity 'prediction's
   if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm)) {
     lat_filter.update(lat_mm);
     lon_filter.update(lon_mm);
@@ -289,26 +279,31 @@ void loop() {
   //      then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely! Then loop here forever.
 
   if (flight_data_updated) {
-    switch (FLIGHT_STATE) {
-      case FlightState::_FLYING:
-        uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_mm_per_sec() <= 0.0);
-        vz_neg_count -= vz_neg_q.push_first_pop_last(first_bit);
-        vz_neg_count += first_bit;
-        if (vz_neg_count > VZ_NEG_Q_BIT_SIZE * 2 / 3) {
-          //TODO: Initiate drogue recovery HERE!!!!!!!!!!!!!!
-          FLIGHT_STATE = FlightState::_FALLING_FAST;
-        }
-        break;
-      case FlightState::_FALLING_FAST:
-        if (alt_filter.get_pos_mm() < ground_alt_mm + MAIN_RECOVERY_ALTITUDE) {
-          //TODO: Initiate main recovery HERE!!!!!!!!!!!!!!
-          FLIGHT_STATE = FlightState::_FALLING_SLOW;
-        }
-        break;
-      case FlightState::_FALLING_SLOW:
-        break;
-      case FlightState::_MAIN_COMP_SAFE_FAIL:
-        break;
-    }
+    if (FLIGHT_STATE == FlightState::_FLYING) {
+      uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_mm_per_sec() <= 0.0);
+      vz_neg_count -= vz_neg_q.push_first_pop_last(first_bit);
+      vz_neg_count += first_bit;
+      if (vz_neg_count > VZ_NEG_Q_BIT_SIZE * 2 / 3) {
+        Serial.println("Apogee reached!");
+        // Rotate fins back to 0 degrees
+        ux = 0.0; uy = 0.0; uz = 0.0;
+        makeFinCorrections();
+        //TODO: Initiate drogue recovery HERE!!!!!!!!!!!!!!
+        FLIGHT_STATE = FlightState::_FALLING_FAST;
+      }
+    } else if (FLIGHT_STATE == FlightState::_FALLING_FAST) {
+      if (alt_filter.get_pos_mm() < ground_alt_mm + MAIN_RECOVERY_ALTITUDE) {
+        Serial.println("Less than 600m to ground!");
+        //TODO: Initiate main recovery HERE!!!!!!!!!!!!!!
+        FLIGHT_STATE = FlightState::_FALLING_SLOW;
+      }
+    } else if (FLIGHT_STATE == FlightState::_FALLING_SLOW) {
+    } else /*FlightState::_MAIN_COMP_SAFE_FAIL*/ {}
+  }
+
+  // If imu did not update for 500ms, then rotate fins back to 0 degrees
+  if (FLIGHT_STATE == FlightState::_FLYING && (micros() - before) > 500000) {
+    ux = 0.0; uy = 0.0; uz = 0.0;
+    makeFinCorrections();
   }
 }

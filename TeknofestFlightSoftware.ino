@@ -37,10 +37,10 @@
 #define CONTROLLER2_PINS { -1, -1, -1, -1 }
 #define CONTROLLER3_PINS { -1, -1, -1, -1 }
 #else
-#define CONTROLLER0_PINS 9
-#define CONTROLLER1_PINS 10
-#define CONTROLLER2_PINS 11
-#define CONTROLLER3_PINS 12
+#define CONTROLLER0_PINS 8
+#define CONTROLLER1_PINS 9
+#define CONTROLLER2_PINS 10
+#define CONTROLLER3_PINS 11
 #endif
 
 #define VZ_NEG_Q_BIT_SIZE 192
@@ -55,7 +55,7 @@ MPU9250 IMU(I2c, 0x68);
 int status;
 
 // A PID controller object
-QuaternionPID controller{ 50.0, 0.5, 1.0 };
+QuaternionPID controller{ 50.0, 1.0, 5.0 };
 
 // The Neo-6M GPS object
 Neo6MGPS neo6m(GPS_TX_PIN, GPS_RX_PIN);
@@ -64,7 +64,11 @@ Neo6MGPS neo6m(GPS_TX_PIN, GPS_RX_PIN);
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
 
 // Servo object for controlling fins
+#ifdef FIN_CONTROL_BY_STEP_MOTOR
 FinController fin_controller(CONTROLLER0_PINS, CONTROLLER1_PINS, CONTROLLER2_PINS, CONTROLLER3_PINS);
+#else
+FinController fin_controller;
+#endif
 
 // Bit Queue for storing negativity condition of the latest measured Vz values
 BitQueue<VZ_NEG_Q_BIT_SIZE> vz_neg_q;
@@ -105,6 +109,11 @@ void setup() {
 
   // Give initial values of 0 degrees
   Serial.println(F("Initializing the fin controls..."));
+#ifdef FIN_CONTROL_BY_STEP_MOTOR
+  fin_controller.begin();
+#else
+  fin_controller.begin(CONTROLLER0_PINS, CONTROLLER1_PINS, CONTROLLER2_PINS, CONTROLLER3_PINS);
+#endif
   fin_controller.makeFinCorrections(0, 0, 0);
 
   Serial.println(F("Initializing GPS module..."));
@@ -138,13 +147,13 @@ void setup() {
      {0.00470700811404384,0.998364615545652,-0.00638311318231112},
      {0.0012955016372647,0.00387494101216781,0.987478872856534}});
   // MAG bias
-  IMU.setMagCalX(-44.988848);
-  IMU.setMagCalY(16.593980);
-  IMU.setMagCalZ(12.325044);
+  IMU.setMagCalX(-41.334130);
+  IMU.setMagCalY(17.872664);
+  IMU.setMagCalZ(11.827231);
   IMU.setMagTM(
-    {{0.021754,0.000565,-0.002232},
-     {0.000565,0.021576,0.000495},
-     {-0.002232,0.000495,0.021625}});
+    {{0.023547,-0.000435,-0.002774},
+     {-0.000435,0.023738,0.000579},
+     {-0.002774,0.000579,0.024689}});
 
   // Calibrate the estimated orientation
   Serial.println(F("Calibrating orientation estimate..."));
@@ -228,20 +237,22 @@ void loop() {
     alt_filter.set_deltat(deltat_sec); alt_filter.predict(Z - 1.0);
 
     // Display the data
+    // Calculate roll, pitch, yaw
+    roll  = atan2(2.0 * (q_a_tn[0] * q_a_tn[1] + q_a_tn[2] * q_a_tn[3]), 1.0 - 2.0 * (q_a_tn[1] * q_a_tn[1] + q_a_tn[2] * q_a_tn[2]));
+    pitch = asin(2.0 * (q_a_tn[0] * q_a_tn[2] - q_a_tn[1] * q_a_tn[3]));
+    yaw   = atan2(2.0 * (q_a_tn[0] * q_a_tn[3] + q_a_tn[1] * q_a_tn[2]), 1.0 - 2.0 * (q_a_tn[2] * q_a_tn[2] + q_a_tn[3] * q_a_tn[3]));
+    roll *= (180.0 / PI);
+    pitch *= (180.0 / PI);
+    yaw   *= (180.0 / PI);
+    // Display the data
     Serial.print(F("dt:\t"));
     Serial.print(deltat);
-    Serial.print(F("\tX:\t"));
-    print_int64_t(lat_filter.get_pos_mm());
-    Serial.print(F("\tY:\t"));
-    print_int64_t(lon_filter.get_pos_mm());
-    Serial.print(F("\tZ:\t"));
-    print_int64_t(alt_filter.get_pos_mm());
-    Serial.print(F("\tVx:\t"));
-    Serial.print(lat_filter.get_vel_mm_per_sec());
-    Serial.print(F("\tVy:\t"));
-    Serial.print(lon_filter.get_vel_mm_per_sec());
-    Serial.print(F("\tVz:\t"));
-    Serial.println(alt_filter.get_vel_mm_per_sec());
+    Serial.print(F("\tRoll:\t"));
+    Serial.print(roll, 4);
+    Serial.print(F("\tPitch:\t"));
+    Serial.print(pitch, 4);
+    Serial.print(F("\tYaw:\t"));
+    Serial.println(yaw, 4);
     Serial.flush();
     before += deltat;
 
@@ -299,8 +310,6 @@ void loop() {
     fin_controller.makeFinCorrections(0, 0, 0);
   }
 
-#ifndef FIN_CONTROL_BY_SERVO
-  // Let step motors run their ticks
-  fin_controller.runSteppers();
-#endif
+  // Let the motors run
+  fin_controller.runMotors();
 }

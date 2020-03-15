@@ -13,6 +13,10 @@ FinController::FinController(const uint8_t(&&pins0)[4],
   stepper2{ AccelStepper::FULL4WIRE, pins2[0], pins2[1], pins2[2], pins2[3] },
   stepper3{ AccelStepper::FULL4WIRE, pins3[0], pins3[1], pins3[2], pins3[3] }
 {
+}
+
+void FinController::begin()
+{
   stepper0.setSpeed(STEP_MOTOR_SPEED);
   stepper1.setSpeed(STEP_MOTOR_SPEED);
   stepper2.setSpeed(STEP_MOTOR_SPEED);
@@ -29,7 +33,7 @@ void FinController::makeFinCorrections(float ux, float uy, float uz)
   stepper3.moveTo(map_float<-180, 180, -1024, 1024>(-uy + uz));
 }
 
-void FinController::runSteppers()
+void FinController::runMotors()
 {
   stepper0.run();
   stepper1.run();
@@ -39,23 +43,43 @@ void FinController::runSteppers()
 
 #elif defined(FIN_CONTROL_BY_SERVO)
 
-FinController::FinController(uint8_t pin0, uint8_t pin1,
-                             uint8_t pin2, uint8_t pin3)
+FinController::FinController() :
+  before{ 0 }
+{
+}
+
+void FinController::begin(uint8_t pin0, uint8_t pin1,
+                          uint8_t pin2, uint8_t pin3)
 {
   servo0.attach(pin0);
   servo1.attach(pin1);
   servo2.attach(pin2);
   servo3.attach(pin3);
+  servo0.write(SERVO_ZERO_ANGLE);
+  servo1.write(SERVO_ZERO_ANGLE);
+  servo2.write(SERVO_ZERO_ANGLE);
+  servo3.write(SERVO_ZERO_ANGLE);
 }
 
 void FinController::makeFinCorrections(float ux, float uy, float uz)
 {
   // servo0 looks towards +X, servo2 looks towards -X
-  servo0.write(SERVO_ZERO_ANGLE - ux + uz);
-  servo2.write(SERVO_ZERO_ANGLE + ux + uz);
+  servo0_a = SERVO_ZERO_ANGLE - ux + uz;
+  servo2_a = SERVO_ZERO_ANGLE + ux + uz;
   // servo1 looks towards -Y, servo3 looks towards +Y
-  servo1.write(SERVO_ZERO_ANGLE + uy + uz);
-  servo3.write(SERVO_ZERO_ANGLE - uy + uz);
+  servo1_a = SERVO_ZERO_ANGLE + uy + uz;
+  servo3_a = SERVO_ZERO_ANGLE - uy + uz;
+}
+
+void FinController::runMotors()
+{
+  if (millis() - before >= SERVO_PWM_PERIOD_MS) {
+    servo0.write(servo0_a);
+    servo1.write(servo1_a);
+    servo2.write(servo2_a);
+    servo3.write(servo3_a);
+    before = millis();
+  }
 }
 
 #endif

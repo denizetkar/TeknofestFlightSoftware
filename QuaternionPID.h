@@ -10,9 +10,9 @@ class QuaternionPID {
     float integrals[3] = { 0.0, 0.0, 0.0 };
     float q_d[4] = {1.0, 0.0, 0.0, 0.0};
   public:
-    static const float Xmin = -20.0, Xmax = 20.0,
-                       Ymin = -20.0, Ymax = 20.0,
-                       Zmin = -20.0, Zmax = 20.0;
+    static constexpr float Xmin = -20.0, Xmax = 20.0,
+                           Ymin = -20.0, Ymax = 20.0,
+                           Zmin = -20.0, Zmax = 20.0;
 
     QuaternionPID(float _Kp, float _Ki, float _Kd);
 

@@ -25,7 +25,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define MPU9250_h
 
 #include <Arduino.h>
+
+#ifndef STM32_CORE_VERSION
 #include <I2C.h>    // I2C library
+#else
+
+#include <Wire.h>    // I2C library
+
+#ifndef I2C_RATE
+#define I2C_RATE 100000
+#endif
+
+#endif
 
 class MPU9250 {
   public:
@@ -67,7 +78,11 @@ class MPU9250 {
       LP_ACCEL_ODR_250HZ = 10,
       LP_ACCEL_ODR_500HZ = 11
     };
+#ifndef STM32_CORE_VERSION
     MPU9250(I2C &bus,uint8_t address);
+#else
+    MPU9250(TwoWire &bus,uint8_t address);
+#endif
     int begin();
     int setAccelRange(AccelRange range);
     int setGyroRange(GyroRange range);
@@ -115,7 +130,11 @@ class MPU9250 {
   protected:
     // i2c
     uint8_t _address;
+#ifndef STM32_CORE_VERSION
     I2C *_i2c;
+#else
+    TwoWire *_i2c;
+#endif
     size_t _numBytes; // number of bytes received from I2C
     // buffer for reading from sensor
     uint8_t _buffer[21];

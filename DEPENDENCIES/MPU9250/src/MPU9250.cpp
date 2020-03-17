@@ -24,10 +24,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <Arduino.h>
 #include "MPU9250.h"
 
+#ifndef STM32_CORE_VERSION
 #define I2C_TIMEOUT_MS 10
 
 /* MPU9250 object, input the I2C bus and address */
 MPU9250::MPU9250(I2C &bus, uint8_t address)
+#else
+MPU9250::MPU9250(TwoWire &bus, uint8_t address)
+#endif
   : _i2c { &bus }, // I2C bus
   _address { address } // I2C address
 {}
@@ -36,8 +40,13 @@ MPU9250::MPU9250(I2C &bus, uint8_t address)
 int MPU9250::begin(){
   // starting the I2C bus
   _i2c->begin();
+#ifndef STM32_CORE_VERSION
   // set a timeout
   _i2c->timeOut(I2C_TIMEOUT_MS);
+#else
+  // setting the I2C clock
+  _i2c->setClock(I2C_RATE);
+#endif
 
   // select clock source to gyro
   if(writeRegister(PWR_MGMNT_1,CLOCK_SEL_PLL) < 0){
@@ -615,14 +624,48 @@ void MPU9250::setMagTM(const float (&&magTM)[3][3]) {
 /* writes a byte to MPU9250 register given a register address and data */
 int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
   /* write data to device */
+#ifndef STM32_CORE_VERSION
   uint8_t res = _i2c->write(_address, subAddress, data);
   delay(10);
   return (res == 0) ? 1 : -1;
+#else
+  _i2c->beginTransmission(_address); // open the device
+  _i2c->write(subAddress); // write the register address
+  _i2c->write(data); // write the data
+  _i2c->endTransmission();
+
+  delay(10);
+
+  /* read back the register */
+  readRegisters(subAddress,1,_buffer);
+  /* check the read back register against the written register */
+  if(_buffer[0] == data) {
+    return 1;
+  }
+  else{
+    return -1;
+  }
+#endif
 }
 
 /* reads registers from MPU9250 given a starting register address, number of bytes, and a pointer to store data */
 int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
+#ifndef STM32_CORE_VERSION
   return _i2c->read(_address, subAddress, count, dest) == 0 ? 1 : -1;
+#else
+  _i2c->beginTransmission(_address); // open the device
+  _i2c->write(subAddress); // specify the starting register address
+  _i2c->endTransmission(false);
+  _numBytes = _i2c->requestFrom(_address, count); // specify the number of bytes to receive
+  if (_numBytes == count) {
+    for(uint8_t i = 0; i < count; i++){
+      dest[i] = _i2c->read();
+    }
+    return 1;
+  } else {
+    return -1;
+  }
+#endif
 }
 
 /* writes a register to the AK8963 given a register address and data */

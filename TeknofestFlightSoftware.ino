@@ -25,11 +25,17 @@
 // TODO: redefine the value below as at least (4g)^2=16 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
+#ifndef STM32_CORE_VERSION
 #define GPS_RX_PIN 3
 #define GPS_TX_PIN 4
+#else
+#define GPS_RX_PIN PB10
+#define GPS_TX_PIN PB11
+#endif
 #define GPS_BAUD_RATE 9600
 
 // TODO: Decide which motor type to use for fin correction
+#ifndef STM32_CORE_VERSION
 #ifndef FIN_CONTROL_BY_SERVO
 // 8, 9, 10, 11 --> 8, 10, 9, 11 (ATTENTION!)
 #define CONTROLLER0_PINS { 8, 10, 9, 11 }
@@ -42,6 +48,20 @@
 #define CONTROLLER2_PINS 10
 #define CONTROLLER3_PINS 11
 #endif
+#else
+#ifndef FIN_CONTROL_BY_SERVO
+// 8, 9, 10, 11 --> 8, 10, 9, 11 (ATTENTION!)
+#define CONTROLLER0_PINS { PA4, PA5, PA6, PB9 }
+#define CONTROLLER1_PINS { PB8, PB5, PB4, PB3 }
+#define CONTROLLER2_PINS { PA15, PA12, PA11, PA8 }
+#define CONTROLLER3_PINS { PB15, PB14, PB13, PB12 }
+#else
+#define CONTROLLER0_PINS PA6
+#define CONTROLLER1_PINS PA7
+#define CONTROLLER2_PINS PB0
+#define CONTROLLER3_PINS PB1
+#endif
+#endif
 
 #define VZ_NEG_Q_BIT_SIZE 192
 // TODO: After porting the code to STM32: Change this altitude into meters!
@@ -51,7 +71,11 @@
 //---------------------setup and loop objects-----------------------------------------------------
 
 // An MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
+#ifndef STM32_CORE_VERSION
 MPU9250 IMU(I2c, 0x68);
+#else
+MPU9250 IMU(Wire, 0x68);
+#endif
 int status;
 
 // A PID controller object
@@ -252,7 +276,14 @@ void loop() {
     Serial.print(F("\tPitch:\t"));
     Serial.print(pitch, 4);
     Serial.print(F("\tYaw:\t"));
-    Serial.println(yaw, 4);
+    Serial.print(yaw, 4);
+    Serial.print(F("\tX:\t"));
+    print_int64_t(lat_filter.get_pos_mm());
+    Serial.print(F("\tY:\t"));
+    print_int64_t(lon_filter.get_pos_mm());
+    Serial.print(F("\tZ:\t"));
+    print_int64_t(alt_filter.get_pos_mm());
+    Serial.println();
     Serial.flush();
     before += deltat;
 

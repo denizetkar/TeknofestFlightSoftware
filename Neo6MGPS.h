@@ -2,14 +2,20 @@
 #define NEO6MGPS_H
 
 #include <Arduino.h>
+#ifndef STM32_CORE_VERSION
 #include <NeoSWSerial.h>
+#endif
 #include <TinyGPS++.h>
 
 void lat_lon_to_x_y_mm(float, float, int64_t&, int64_t&);
 
 class Neo6MGPS {
   public:
+#ifndef STM32_CORE_VERSION
     NeoSWSerial ss;
+#else
+    HardwareSerial ss;
+#endif
     TinyGPSPlus gps;
 
     Neo6MGPS(int, int);

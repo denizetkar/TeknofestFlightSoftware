@@ -12,9 +12,9 @@ float EarthPositionFilter::get_vel_mm_per_sec()
 {
   return vel_mm_per_sec;
 }
-void EarthPositionFilter::get_P(float (&_P)[2][2])
+void EarthPositionFilter::get_P(float (&P_)[2][2])
 {
-  memcpy(&_P, &P, sizeof(P));
+  memcpy(&P_, &P, sizeof(P));
 }
 float EarthPositionFilter::get_deltat()
 {
@@ -37,9 +37,9 @@ void EarthPositionFilter::set_vel_mm_per_sec(float _vel_mm_per_sec)
 {
   vel_mm_per_sec = _vel_mm_per_sec;
 }
-void EarthPositionFilter::set_P(const float (&&_P)[2][2])
+void EarthPositionFilter::set_P(const float (&&P_)[2][2])
 {
-  memcpy(&P, &_P, sizeof(P));
+  memcpy(&P, &P_, sizeof(P));
 }
 void EarthPositionFilter::set_deltat(float _dt)
 {

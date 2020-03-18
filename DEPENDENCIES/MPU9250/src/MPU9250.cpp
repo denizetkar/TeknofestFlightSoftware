@@ -150,8 +150,9 @@ int MPU9250::begin(){
   // instruct the MPU9250 to get 7 bytes of data from the AK8963 at the sample rate
   readAK8963Registers(AK8963_HXL,7,_buffer);
   // estimate gyro bias
-  if (calibrateGyro() < 0) {
-    return -20;
+  int res = calibrateGyro();
+  if (res < 0) {
+    return -20 + res;
   }
   // successful init, return 1
   return 1;
@@ -508,7 +509,7 @@ int MPU9250::calibrateGyro() {
   if (setSrd(_srd) < 0) {
     return -6;
   }
-  return 1;
+  return 0;
 }
 
 /* returns the gyro bias in the X direction, rad/s */
@@ -621,21 +622,35 @@ void MPU9250::setMagTM(const float (&&magTM)[3][3]) {
   memcpy(&_hTM, &magTM, sizeof(_hTM));
 }
 
+/* reset the I2C */
+#ifdef STM32_CORE_VERSION
+void MPU9250::resetI2C()
+{
+  _i2c->end();
+  _i2c->begin();
+  _i2c->setClock(I2C_RATE);
+}
+#endif
+
 /* writes a byte to MPU9250 register given a register address and data */
 int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
+  uint8_t res;
   /* write data to device */
 #ifndef STM32_CORE_VERSION
-  uint8_t res = _i2c->write(_address, subAddress, data);
+  res = _i2c->write(_address, subAddress, data);
   delay(10);
   return (res == 0) ? 1 : -1;
 #else
   _i2c->beginTransmission(_address); // open the device
   _i2c->write(subAddress); // write the register address
   _i2c->write(data); // write the data
-  _i2c->endTransmission();
+  res = _i2c->endTransmission();
+  if (res != 0) {
+    resetI2C();
+    return -1;
+  }
 
   delay(10);
-
   /* read back the register */
   readRegisters(subAddress,1,_buffer);
   /* check the read back register against the written register */
@@ -643,6 +658,7 @@ int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
     return 1;
   }
   else{
+    resetI2C();
     return -1;
   }
 #endif
@@ -653,9 +669,15 @@ int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
 #ifndef STM32_CORE_VERSION
   return _i2c->read(_address, subAddress, count, dest) == 0 ? 1 : -1;
 #else
+  uint8_t res;
   _i2c->beginTransmission(_address); // open the device
   _i2c->write(subAddress); // specify the starting register address
-  _i2c->endTransmission(false);
+  res = _i2c->endTransmission(false);
+  if (res != 0) {
+    resetI2C();
+    return -1;
+  }
+
   _numBytes = _i2c->requestFrom(_address, count); // specify the number of bytes to receive
   if (_numBytes == count) {
     for(uint8_t i = 0; i < count; i++){
@@ -663,6 +685,7 @@ int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
     }
     return 1;
   } else {
+    resetI2C();
     return -1;
   }
 #endif

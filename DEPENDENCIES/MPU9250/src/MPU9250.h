@@ -252,6 +252,9 @@ class MPU9250 {
     static constexpr uint8_t AK8963_ASA = 0x10;
     static constexpr uint8_t AK8963_WHO_AM_I = 0x00;
     // private functions
+#ifdef STM32_CORE_VERSION
+    void resetI2C();
+#endif
     int writeRegister(uint8_t subAddress, uint8_t data);
     int readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest);
     int writeAK8963Register(uint8_t subAddress, uint8_t data);

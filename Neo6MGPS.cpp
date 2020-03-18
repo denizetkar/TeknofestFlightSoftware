@@ -26,7 +26,6 @@ void lat_lon_to_x_y_mm(float lat, float lon, int64_t &x, int64_t &y)
   y = static_cast<int64_t>( (((111412.84 * cos(lat_rad) - 93.5 * cos(3.0 * lat_rad)) + 0.118 * cos(5.0 * lat_rad)) * lon) * 1000.0 );
 }
 
-
 Neo6MGPS::Neo6MGPS(int GPS_TX_PIN, int GPS_RX_PIN)
   : ss{ GPS_TX_PIN, GPS_RX_PIN }
 {

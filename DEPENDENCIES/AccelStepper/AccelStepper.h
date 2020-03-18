@@ -16,9 +16,9 @@
 // These defs cause trouble on some versions of Arduino
 #undef round
 
-float map_float(float x, float in_min, float in_max, float out_min, float out_max);
+double map_double(double x, double in_min, double in_max, double out_min, double out_max);
 template <int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max>
-float map_float(float x) {
+double map_double(double x) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
@@ -141,11 +141,11 @@ class AccelStepper
     /// once per hour, approximately. Speed accuracy depends on the Arduino
     /// crystal. Jitter depends on how frequently you call the runSpeed() function.
     /// The speed will be limited by the current value of setMaxSpeed()
-    void    setSpeed(float speed);
+    void    setSpeed(double speed);
 
     /// The most recently set speed.
     /// \return the most recent speed in steps per second
-    float   speed();
+    double   speed();
 
     /// The distance from the current position to the target position.
     /// \return the distance from the current position to the target position
@@ -291,7 +291,7 @@ class AccelStepper
 
     /// The current motos speed in steps per second
     /// Positive is clockwise
-    float          _speed;         // Steps per second
+    double          _speed;         // Steps per second
 
     /// The current interval between steps in microseconds.
     unsigned long  _stepInterval;

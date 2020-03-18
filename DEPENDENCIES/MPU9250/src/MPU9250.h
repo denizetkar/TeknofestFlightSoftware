@@ -93,40 +93,40 @@ class MPU9250 {
     bool isDataReady();
     bool tryReadSensor();
     int readSensor();
-    float getAccelX_g();
-    float getAccelY_g();
-    float getAccelZ_g();
-    float getGyroX_rads();
-    float getGyroY_rads();
-    float getGyroZ_rads();
-    float getMagX_uT();
-    float getMagY_uT();
-    float getMagZ_uT();
-    float getTemperature_C();
+    double getAccelX_g();
+    double getAccelY_g();
+    double getAccelZ_g();
+    double getGyroX_rads();
+    double getGyroY_rads();
+    double getGyroZ_rads();
+    double getMagX_uT();
+    double getMagY_uT();
+    double getMagZ_uT();
+    double getTemperature_C();
     
     int calibrateGyro();
-    float getGyroBiasX_rads();
-    float getGyroBiasY_rads();
-    float getGyroBiasZ_rads();
-    void setGyroBiasX_rads(float bias);
-    void setGyroBiasY_rads(float bias);
-    void setGyroBiasZ_rads(float bias);
-    float getAccelBiasX_g();
-    float getAccelBiasY_g();
-    float getAccelBiasZ_g();
-    void getAccelTM(float (&)[3][3]);
-    void setAccelCalX(float bias);
-    void setAccelCalY(float bias);
-    void setAccelCalZ(float bias);
-    void setAccelTM(const float (&&)[3][3]);
-    float getMagBiasX_uT();
-    float getMagBiasY_uT();
-    float getMagBiasZ_uT();
-    void getMagTM(float (&)[3][3]);
-    void setMagCalX(float bias);
-    void setMagCalY(float bias);
-    void setMagCalZ(float bias);
-    void setMagTM(const float (&&)[3][3]);
+    double getGyroBiasX_rads();
+    double getGyroBiasY_rads();
+    double getGyroBiasZ_rads();
+    void setGyroBiasX_rads(double bias);
+    void setGyroBiasY_rads(double bias);
+    void setGyroBiasZ_rads(double bias);
+    double getAccelBiasX_g();
+    double getAccelBiasY_g();
+    double getAccelBiasZ_g();
+    void getAccelTM(double (&)[3][3]);
+    void setAccelCalX(double bias);
+    void setAccelCalY(double bias);
+    void setAccelCalZ(double bias);
+    void setAccelTM(const double (&&)[3][3]);
+    double getMagBiasX_uT();
+    double getMagBiasY_uT();
+    double getMagBiasZ_uT();
+    void getMagTM(double (&)[3][3]);
+    void setMagCalX(double bias);
+    void setMagCalY(double bias);
+    void setMagCalZ(double bias);
+    void setMagTM(const double (&&)[3][3]);
   protected:
     // i2c
     uint8_t _address;
@@ -144,16 +144,16 @@ class MPU9250 {
     int16_t _hxcounts,_hycounts,_hzcounts;
     int16_t _tcounts;
     // data buffer
-    float _ax, _ay, _az;
-    float _gx, _gy, _gz;
-    float _hx, _hy, _hz;
-    float _t;
+    double _ax, _ay, _az;
+    double _gx, _gy, _gz;
+    double _hx, _hy, _hz;
+    double _t;
     // scale factors
-    float _accelScale;
-    float _gyroScale;
-    float _magScaleX, _magScaleY, _magScaleZ;
-    static constexpr float _tempScale = 333.87f;
-    static constexpr float _tempOffset = 21.0f;
+    double _accelScale;
+    double _gyroScale;
+    double _magScaleX, _magScaleY, _magScaleZ;
+    static constexpr double _tempScale = 333.87f;
+    static constexpr double _tempOffset = 21.0f;
     // configuration
     AccelRange _accelRange;
     GyroRange _gyroRange;
@@ -162,15 +162,15 @@ class MPU9250 {
     // gyro bias estimation
     static constexpr size_t _numSamples = 400;
     double _gxbD, _gybD, _gzbD;
-    float _gxb, _gyb, _gzb;
+    double _gxb, _gyb, _gzb;
     // accel bias estimation and transformation matrix
-    float _axb, _ayb, _azb;
-    float _aTM[3][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    double _axb, _ayb, _azb;
+    double _aTM[3][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
     // magnetometer bias estimation and transformation matrix
-    float _hxb, _hyb, _hzb;
-    float _hTM[3][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    double _hxb, _hyb, _hzb;
+    double _hTM[3][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
     // constants
-    static constexpr float _d2r = PI/180.0f;
+    static constexpr double _d2r = PI/180.0f;
     // MPU9250 registers
     static constexpr uint8_t ACCEL_OUT = 0x3B;
     static constexpr uint8_t GYRO_OUT = 0x43;

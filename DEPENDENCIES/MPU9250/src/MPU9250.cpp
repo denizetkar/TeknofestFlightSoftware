@@ -84,13 +84,13 @@ int MPU9250::begin(){
   if(writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_16G) < 0){
     return -7;
   }
-  _accelScale = 16.0f/32767.5f; // setting the accel scale to 16G
+  _accelScale = 16.0/32767.5; // setting the accel scale to 16G
   _accelRange = ACCEL_RANGE_16G;
   // setting the gyro range to 2000DPS as default
   if(writeRegister(GYRO_CONFIG,GYRO_FS_SEL_2000DPS) < 0){
     return -8;
   }
-  _gyroScale = 2000.0f/32767.5f * _d2r; // setting the gyro scale to 2000DPS
+  _gyroScale = 2000.0/32767.5 * _d2r; // setting the gyro scale to 2000DPS
   _gyroRange = GYRO_RANGE_2000DPS;
   // setting bandwidth to 184Hz as default
   if(writeRegister(ACCEL_CONFIG2,ACCEL_DLPF_184) < 0){ 
@@ -130,9 +130,9 @@ int MPU9250::begin(){
   delay(100); // long wait between AK8963 mode changes
   // read the AK8963 ASA registers and compute magnetometer scale factors
   readAK8963Registers(AK8963_ASA,3,_buffer);
-  _magScaleX = ((((float)_buffer[0]) - 128.0f)/(256.0f) + 1.0f) * 4912.0f / 32760.0f; // micro Tesla
-  _magScaleY = ((((float)_buffer[1]) - 128.0f)/(256.0f) + 1.0f) * 4912.0f / 32760.0f; // micro Tesla
-  _magScaleZ = ((((float)_buffer[2]) - 128.0f)/(256.0f) + 1.0f) * 4912.0f / 32760.0f; // micro Tesla 
+  _magScaleX = ((((double)_buffer[0]) - 128.0)/(256.0) + 1.0) * 4912.0 / 32760.0; // micro Tesla
+  _magScaleY = ((((double)_buffer[1]) - 128.0)/(256.0) + 1.0) * 4912.0 / 32760.0; // micro Tesla
+  _magScaleZ = ((((double)_buffer[2]) - 128.0)/(256.0) + 1.0) * 4912.0 / 32760.0; // micro Tesla 
   // set AK8963 to Power Down
   if(writeAK8963Register(AK8963_CNTL1,AK8963_PWR_DOWN) < 0){
     return -17;
@@ -166,7 +166,7 @@ int MPU9250::setAccelRange(AccelRange range) {
       if(writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_2G) < 0){
         return -1;
       }
-      _accelScale = 2.0f/32767.5f; // setting the accel scale to 2G
+      _accelScale = 2.0/32767.5; // setting the accel scale to 2G
       break; 
     }
     case ACCEL_RANGE_4G: {
@@ -174,7 +174,7 @@ int MPU9250::setAccelRange(AccelRange range) {
       if(writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_4G) < 0){
         return -1;
       }
-      _accelScale = 4.0f/32767.5f; // setting the accel scale to 4G
+      _accelScale = 4.0/32767.5; // setting the accel scale to 4G
       break;
     }
     case ACCEL_RANGE_8G: {
@@ -182,7 +182,7 @@ int MPU9250::setAccelRange(AccelRange range) {
       if(writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_8G) < 0){
         return -1;
       }
-      _accelScale = 8.0f/32767.5f; // setting the accel scale to 8G
+      _accelScale = 8.0/32767.5; // setting the accel scale to 8G
       break;
     }
     case ACCEL_RANGE_16G: {
@@ -190,7 +190,7 @@ int MPU9250::setAccelRange(AccelRange range) {
       if(writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_16G) < 0){
         return -1;
       }
-      _accelScale = 16.0f/32767.5f; // setting the accel scale to 16G
+      _accelScale = 16.0/32767.5; // setting the accel scale to 16G
       break;
     }
   }
@@ -206,7 +206,7 @@ int MPU9250::setGyroRange(GyroRange range) {
       if(writeRegister(GYRO_CONFIG,GYRO_FS_SEL_250DPS) < 0){
         return -1;
       }
-      _gyroScale = 250.0f/32767.5f * _d2r; // setting the gyro scale to 250DPS
+      _gyroScale = 250.0/32767.5 * _d2r; // setting the gyro scale to 250DPS
       break;
     }
     case GYRO_RANGE_500DPS: {
@@ -214,7 +214,7 @@ int MPU9250::setGyroRange(GyroRange range) {
       if(writeRegister(GYRO_CONFIG,GYRO_FS_SEL_500DPS) < 0){
         return -1;
       }
-      _gyroScale = 500.0f/32767.5f * _d2r; // setting the gyro scale to 500DPS
+      _gyroScale = 500.0/32767.5 * _d2r; // setting the gyro scale to 500DPS
       break;  
     }
     case GYRO_RANGE_1000DPS: {
@@ -222,7 +222,7 @@ int MPU9250::setGyroRange(GyroRange range) {
       if(writeRegister(GYRO_CONFIG,GYRO_FS_SEL_1000DPS) < 0){
         return -1;
       }
-      _gyroScale = 1000.0f/32767.5f * _d2r; // setting the gyro scale to 1000DPS
+      _gyroScale = 1000.0/32767.5 * _d2r; // setting the gyro scale to 1000DPS
       break;
     }
     case GYRO_RANGE_2000DPS: {
@@ -230,7 +230,7 @@ int MPU9250::setGyroRange(GyroRange range) {
       if(writeRegister(GYRO_CONFIG,GYRO_FS_SEL_2000DPS) < 0){
         return -1;
       }
-      _gyroScale = 2000.0f/32767.5f * _d2r; // setting the gyro scale to 2000DPS
+      _gyroScale = 2000.0/32767.5 * _d2r; // setting the gyro scale to 2000DPS
       break;
     }
   }
@@ -381,7 +381,7 @@ bool MPU9250::tryReadSensor() {
 
 /* reads the most current data from MPU9250 and stores in buffer */
 int MPU9250::readSensor() {
-  float X, Y, Z;
+  double X, Y, Z;
   // grab the data from the MPU9250
   if (readRegisters(ACCEL_OUT, 21, _buffer) < 0) {
     return -1;
@@ -397,18 +397,18 @@ int MPU9250::readSensor() {
   _hxcounts = (((int16_t)_buffer[15]) << 8) | _buffer[14];
   _hycounts = (((int16_t)_buffer[17]) << 8) | _buffer[16];
   _hzcounts = (((int16_t)_buffer[19]) << 8) | _buffer[18];
-  // convert to float values
-  _ax = ((float)(_axcounts) * _accelScale) - _axb;
-  _ay = ((float)(_aycounts) * _accelScale) - _ayb;
-  _az = ((float)(_azcounts) * _accelScale) - _azb;
-  _gx = ((float)(_gxcounts) * _gyroScale) - _gxb;
-  _gy = ((float)(_gycounts) * _gyroScale) - _gyb;
-  _gz = ((float)(_gzcounts) * _gyroScale) - _gzb;
+  // convert to double values
+  _ax = ((double)(_axcounts) * _accelScale) - _axb;
+  _ay = ((double)(_aycounts) * _accelScale) - _ayb;
+  _az = ((double)(_azcounts) * _accelScale) - _azb;
+  _gx = ((double)(_gxcounts) * _gyroScale) - _gxb;
+  _gy = ((double)(_gycounts) * _gyroScale) - _gyb;
+  _gz = ((double)(_gzcounts) * _gyroScale) - _gzb;
   // transform magnetometer axes into that of accelerometer and gyroscope
-  _hx = ((float)(_hycounts) * _magScaleX) - _hxb;
-  _hy = ((float)(_hxcounts) * _magScaleY) - _hyb;
-  _hz = ((float)(-_hzcounts) * _magScaleZ) - _hzb;
-  _t = ((((float) _tcounts) - _tempOffset)/_tempScale) + _tempOffset;
+  _hx = ((double)(_hycounts) * _magScaleX) - _hxb;
+  _hy = ((double)(_hxcounts) * _magScaleY) - _hyb;
+  _hz = ((double)(-_hzcounts) * _magScaleZ) - _hzb;
+  _t = ((((double) _tcounts) - _tempOffset)/_tempScale) + _tempOffset;
   // perform linear transformation correction
   X = _aTM[0][0] * _ax + _aTM[0][1] * _ay + _aTM[0][2] * _az;
   Y = _aTM[1][0] * _ax + _aTM[1][1] * _ay + _aTM[1][2] * _az;
@@ -422,52 +422,52 @@ int MPU9250::readSensor() {
 }
 
 /* returns the accelerometer measurement in the x direction, g (9.807 m/s/s) */
-float MPU9250::getAccelX_g() {
+double MPU9250::getAccelX_g() {
   return _ax;
 }
 
 /* returns the accelerometer measurement in the y direction, g (9.807 m/s/s) */
-float MPU9250::getAccelY_g() {
+double MPU9250::getAccelY_g() {
   return _ay;
 }
 
 /* returns the accelerometer measurement in the z direction, g (9.807 m/s/s) */
-float MPU9250::getAccelZ_g() {
+double MPU9250::getAccelZ_g() {
   return _az;
 }
 
 /* returns the gyroscope measurement in the x direction, rad/s */
-float MPU9250::getGyroX_rads() {
+double MPU9250::getGyroX_rads() {
   return _gx;
 }
 
 /* returns the gyroscope measurement in the y direction, rad/s */
-float MPU9250::getGyroY_rads() {
+double MPU9250::getGyroY_rads() {
   return _gy;
 }
 
 /* returns the gyroscope measurement in the z direction, rad/s */
-float MPU9250::getGyroZ_rads() {
+double MPU9250::getGyroZ_rads() {
   return _gz;
 }
 
 /* returns the magnetometer measurement in the x direction, uT */
-float MPU9250::getMagX_uT() {
+double MPU9250::getMagX_uT() {
   return _hx;
 }
 
 /* returns the magnetometer measurement in the y direction, uT */
-float MPU9250::getMagY_uT() {
+double MPU9250::getMagY_uT() {
   return _hy;
 }
 
 /* returns the magnetometer measurement in the z direction, uT */
-float MPU9250::getMagZ_uT() {
+double MPU9250::getMagZ_uT() {
   return _hz;
 }
 
 /* returns the die temperature, C */
-float MPU9250::getTemperature_C() {
+double MPU9250::getTemperature_C() {
   return _t;
 }
 
@@ -495,9 +495,9 @@ int MPU9250::calibrateGyro() {
     _gzbD += (getGyroZ_rads() + _gzb)/((double)_numSamples);
     delay(2);
   }
-  _gxb = (float)_gxbD;
-  _gyb = (float)_gybD;
-  _gzb = (float)_gzbD;
+  _gxb = (double)_gxbD;
+  _gyb = (double)_gybD;
+  _gzb = (double)_gzbD;
 
   // set the range, bandwidth, and srd back to what they were
   if (setGyroRange(_gyroRange) < 0) {
@@ -513,112 +513,112 @@ int MPU9250::calibrateGyro() {
 }
 
 /* returns the gyro bias in the X direction, rad/s */
-float MPU9250::getGyroBiasX_rads() {
+double MPU9250::getGyroBiasX_rads() {
   return _gxb;
 }
 
 /* returns the gyro bias in the Y direction, rad/s */
-float MPU9250::getGyroBiasY_rads() {
+double MPU9250::getGyroBiasY_rads() {
   return _gyb;
 }
 
 /* returns the gyro bias in the Z direction, rad/s */
-float MPU9250::getGyroBiasZ_rads() {
+double MPU9250::getGyroBiasZ_rads() {
   return _gzb;
 }
 
 /* sets the gyro bias in the X direction to bias, rad/s */
-void MPU9250::setGyroBiasX_rads(float bias) {
+void MPU9250::setGyroBiasX_rads(double bias) {
   _gxb = bias;
 }
 
 /* sets the gyro bias in the Y direction to bias, rad/s */
-void MPU9250::setGyroBiasY_rads(float bias) {
+void MPU9250::setGyroBiasY_rads(double bias) {
   _gyb = bias;
 }
 
 /* sets the gyro bias in the Z direction to bias, rad/s */
-void MPU9250::setGyroBiasZ_rads(float bias) {
+void MPU9250::setGyroBiasZ_rads(double bias) {
   _gzb = bias;
 }
 
 /* returns the accelerometer bias in the X direction, g (9.807 m/s/s) */
-float MPU9250::getAccelBiasX_g() {
+double MPU9250::getAccelBiasX_g() {
   return _axb;
 }
 
 /* returns the accelerometer bias in the Y direction, g (9.807 m/s/s) */
-float MPU9250::getAccelBiasY_g() {
+double MPU9250::getAccelBiasY_g() {
   return _ayb;
 }
 
 /* returns the accelerometer bias in the Z direction, g (9.807 m/s/s) */
-float MPU9250::getAccelBiasZ_g() {
+double MPU9250::getAccelBiasZ_g() {
   return _azb;
 }
 
 /* returns the accelerometer transformation matrix */
-void MPU9250::getAccelTM(float (&accelTM)[3][3]) {
+void MPU9250::getAccelTM(double (&accelTM)[3][3]) {
   memcpy(&accelTM, &_aTM, sizeof(_aTM));
 }
 
 /* sets the accelerometer bias g (9.807 m/s/s) in the X direction */
-void MPU9250::setAccelCalX(float bias) {
+void MPU9250::setAccelCalX(double bias) {
   _axb = bias;
 }
 
 /* sets the accelerometer bias g (9.807 m/s/s) in the Y direction */
-void MPU9250::setAccelCalY(float bias) {
+void MPU9250::setAccelCalY(double bias) {
   _ayb = bias;
 }
 
 /* sets the accelerometer bias g (9.807 m/s/s) in the Z direction */
-void MPU9250::setAccelCalZ(float bias) {
+void MPU9250::setAccelCalZ(double bias) {
   _azb = bias;
 }
 
 /* sets the accelerometer transformation matrix */
-void MPU9250::setAccelTM(const float (&&accelTM)[3][3]) {
+void MPU9250::setAccelTM(const double (&&accelTM)[3][3]) {
   memcpy(&_aTM, &accelTM, sizeof(_aTM));
 }
 
 /* returns the magnetometer bias in the X direction, uT */
-float MPU9250::getMagBiasX_uT() {
+double MPU9250::getMagBiasX_uT() {
   return _hxb;
 }
 
 /* returns the magnetometer bias in the Y direction, uT */
-float MPU9250::getMagBiasY_uT() {
+double MPU9250::getMagBiasY_uT() {
   return _hyb;
 }
 
 /* returns the magnetometer bias in the Z direction, uT */
-float MPU9250::getMagBiasZ_uT() {
+double MPU9250::getMagBiasZ_uT() {
   return _hzb;
 }
 
 /* returns the magnetometer transformation matrix */
-void MPU9250::getMagTM(float (&magTM)[3][3]) {
+void MPU9250::getMagTM(double (&magTM)[3][3]) {
   memcpy(&magTM, &_hTM, sizeof(_hTM));
 }
 
 /* sets the magnetometer bias (uT) in the X direction */
-void MPU9250::setMagCalX(float bias) {
+void MPU9250::setMagCalX(double bias) {
   _hxb = bias;
 }
 
 /* sets the magnetometer bias (uT) in the Y direction */
-void MPU9250::setMagCalY(float bias) {
+void MPU9250::setMagCalY(double bias) {
   _hyb = bias;
 }
 
 /* sets the magnetometer bias (uT) in the Z direction */
-void MPU9250::setMagCalZ(float bias) {
+void MPU9250::setMagCalZ(double bias) {
   _hzb = bias;
 }
 
 /* sets the magnetometer transformation matrix */
-void MPU9250::setMagTM(const float (&&magTM)[3][3]) {
+void MPU9250::setMagTM(const double (&&magTM)[3][3]) {
   memcpy(&_hTM, &magTM, sizeof(_hTM));
 }
 

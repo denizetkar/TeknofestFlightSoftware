@@ -5,7 +5,7 @@
 
 #include "AccelStepper.h"
 
-float map_float(float x, float in_min, float in_max, float out_min, float out_max) {
+double map_double(double x, double in_min, double in_max, double out_min, double out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
@@ -133,7 +133,7 @@ boolean AccelStepper::run()
   return runSpeedToPosition();
 }
 
-void AccelStepper::setSpeed(float speed)
+void AccelStepper::setSpeed(double speed)
 {
   if (speed == _speed)
     return;
@@ -148,7 +148,7 @@ void AccelStepper::setSpeed(float speed)
   _speed = speed;
 }
 
-float AccelStepper::speed()
+double AccelStepper::speed()
 {
   return _speed;
 }

@@ -7,7 +7,11 @@
 #endif
 #include <TinyGPS++.h>
 
-void lat_lon_to_x_y_mm(float, float, int64_t&, int64_t&);
+#ifndef STM32_CORE_VERSION
+void lat_lon_to_x_y_mm(double, double, int64_t&, int64_t&);
+#else
+void lat_lon_to_x_y_m(double, double, double&, double&);
+#endif
 
 class Neo6MGPS {
   public:
@@ -21,7 +25,11 @@ class Neo6MGPS {
     Neo6MGPS(int, int);
 
     void begin(uint16_t);
+#ifndef STM32_CORE_VERSION
     bool try_read_gps(int64_t&, int64_t&, int64_t&, uint8_t num_gps=4);
+#else
+    bool try_read_gps(double&, double&, double&, uint8_t num_gps=4);
+#endif
 };
 
 #endif

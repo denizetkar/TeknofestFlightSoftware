@@ -23,14 +23,14 @@ void FinController::begin()
   stepper3.setSpeed(STEP_MOTOR_SPEED);
 }
 
-void FinController::makeFinCorrections(float ux, float uy, float uz)
+void FinController::makeFinCorrections(double ux, double uy, double uz)
 {
   // stepper0 looks towards +X, stepper2 looks towards -X
-  stepper0.moveTo(map_float<-180, 180, -1024, 1024>(-ux + uz));
-  stepper2.moveTo(map_float<-180, 180, -1024, 1024>(ux + uz));
+  stepper0.moveTo(map_double<-180, 180, -1024, 1024>(-ux + uz));
+  stepper2.moveTo(map_double<-180, 180, -1024, 1024>(ux + uz));
   // stepper1 looks towards -Y, stepper3 looks towards +Y
-  stepper1.moveTo(map_float<-180, 180, -1024, 1024>(uy + uz));
-  stepper3.moveTo(map_float<-180, 180, -1024, 1024>(-uy + uz));
+  stepper1.moveTo(map_double<-180, 180, -1024, 1024>(uy + uz));
+  stepper3.moveTo(map_double<-180, 180, -1024, 1024>(-uy + uz));
 }
 
 void FinController::runMotors()
@@ -61,7 +61,7 @@ void FinController::begin(uint8_t pin0, uint8_t pin1,
   servo3.write(SERVO_ZERO_ANGLE);
 }
 
-void FinController::makeFinCorrections(float ux, float uy, float uz)
+void FinController::makeFinCorrections(double ux, double uy, double uz)
 {
   // servo0 looks towards +X, servo2 looks towards -X
   servo0_a = SERVO_ZERO_ANGLE - ux + uz;

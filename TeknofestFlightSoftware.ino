@@ -5,15 +5,14 @@
 #include "MadgwickAHRS.h"
 #include "QuaternionPID.h"
 
-// TODO: After porting the code to STM32: Read positions from GPS in meters!
 #include "Neo6MGPS.h"
 
-// TODO: After porting the code to STM32: Turn int64_t variables into 'double' and track position in meters!
 #include "EarthPositionFilter.h"
 #include "FinController.h"
 
-// TODO: After porting the code to STM32: No longer use "print_64bit.h"
+#ifndef STM32_CORE_VERSION
 #include "print_64bit.h"
+#endif
 #include "BitQueue.h"
 
 //------------------------------------------------------------------------------------------------
@@ -39,9 +38,9 @@
 #ifndef FIN_CONTROL_BY_SERVO
 // 8, 9, 10, 11 --> 8, 10, 9, 11 (ATTENTION!)
 #define CONTROLLER0_PINS { 8, 10, 9, 11 }
-#define CONTROLLER1_PINS { -1, -1, -1, -1 }
-#define CONTROLLER2_PINS { -1, -1, -1, -1 }
-#define CONTROLLER3_PINS { -1, -1, -1, -1 }
+#define CONTROLLER1_PINS /* NOT ENOUGH PINS ON UNO */
+#define CONTROLLER2_PINS /* NOT ENOUGH PINS ON UNO */
+#define CONTROLLER3_PINS /* NOT ENOUGH PINS ON UNO */
 #else
 #define CONTROLLER0_PINS 8
 #define CONTROLLER1_PINS 9
@@ -64,8 +63,11 @@
 #endif
 
 #define VZ_NEG_Q_BIT_SIZE 192
-// TODO: After porting the code to STM32: Change this altitude into meters!
+#ifndef STM32_CORE_VERSION
 #define MAIN_RECOVERY_ALTITUDE 600000
+#else
+#define MAIN_RECOVERY_ALTITUDE 600
+#endif
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop objects-----------------------------------------------------
@@ -103,7 +105,7 @@ BitQueue<VZ_NEG_Q_BIT_SIZE> vz_neg_q;
 // There is approximately 5.5 degrees East magnetic declination in Turkey on 24.02.2020.
 // ( cos(-5.5*pi/180), 0, 0, sin(-5.5*pi/180) ) is the rotation quaternion required to
 // rotate the true north frame into magnetic north frame
-const float q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
+const double q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop variables---------------------------------------------------
@@ -117,9 +119,12 @@ enum FlightState: uint8_t {
   _MAIN_COMP_SAFE_FAIL = 4
 };
 FlightState FLIGHT_STATE = FlightState::_BEFORE_FLIGHT;
-float roll, pitch, yaw, X, Y, Z, ux, uy, uz, q_a_tn[4], deltat_sec;
-// TODO: After porting the code to STM32: Change below positions to 'double' and into meters!
+#ifndef STM32_CORE_VERSION
+double roll, pitch, yaw, X, Y, Z, ux, uy, uz, q_a_tn[4], deltat_sec;
 int64_t lat_mm, lon_mm, alt_mm, ground_alt_mm;
+#else
+double roll, pitch, yaw, X, Y, Z, ux, uy, uz, q_a_tn[4], deltat_sec, lat_m, lon_m, alt_m, ground_alt_m;
+#endif
 uint32_t before = 0, deltat;
 uint8_t vz_neg_count = 0;
 
@@ -203,14 +208,25 @@ void setup() {
   // Make sure our GPS module uses enough GPS satellites and initialize current position.
   Serial.println(F("Searching for GPS satellites..."));
   while (true) {
+#ifndef STM32_CORE_VERSION
     if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm, MIN_NUM_GPS)) {
-      // FOUND at least 4 GPS satellites!
+      // FOUND at least 5 GPS satellites!
       lat_filter.set_pos_mm(lat_mm);
       lon_filter.set_pos_mm(lon_mm);
       alt_filter.set_pos_mm(alt_mm);
       ground_alt_mm = alt_mm;
       break;
     }
+#else
+    if (neo6m.try_read_gps(lat_m, lon_m, alt_m, MIN_NUM_GPS)) {
+      // FOUND at least 5 GPS satellites!
+      lat_filter.set_pos_m(lat_m);
+      lon_filter.set_pos_m(lon_m);
+      alt_filter.set_pos_m(alt_m);
+      ground_alt_m = alt_m;
+      break;
+    }
+#endif
   }
 
   // TODO: Send _BEFORE_FLIGHT signal to the backup computer, and wait for transmission!
@@ -277,12 +293,21 @@ void loop() {
     Serial.print(pitch, 4);
     Serial.print(F("\tYaw:\t"));
     Serial.print(yaw, 4);
+#ifndef STM32_CORE_VERSION
     Serial.print(F("\tX:\t"));
     print_int64_t(lat_filter.get_pos_mm());
     Serial.print(F("\tY:\t"));
     print_int64_t(lon_filter.get_pos_mm());
     Serial.print(F("\tZ:\t"));
     print_int64_t(alt_filter.get_pos_mm());
+#else
+    Serial.print(F("\tX:\t"));
+    Serial.print(lat_filter.get_pos_m());
+    Serial.print(F("\tY:\t"));
+    Serial.print(lon_filter.get_pos_m());
+    Serial.print(F("\tZ:\t"));
+    Serial.print(alt_filter.get_pos_m());
+#endif
     Serial.println();
     Serial.flush();
     before += deltat;
@@ -301,20 +326,32 @@ void loop() {
   }
 
   // Get GPS data if available and 'update' the position and velocity 'prediction's
+#ifndef STM32_CORE_VERSION
   if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm)) {
     lat_filter.update(lat_mm);
     lon_filter.update(lon_mm);
     alt_filter.update(alt_mm);
-
     flight_data_updated = true;
   }
+#else
+  if (neo6m.try_read_gps(lat_m, lon_m, alt_m)) {
+    lat_filter.update(lat_m);
+    lon_filter.update(lon_m);
+    alt_filter.update(alt_m);
+    flight_data_updated = true;
+  }
+#endif
 
   // TODO: If v_z variance is too high OR flight data has not been updated for 1 second,
   //       then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely! Then loop here forever.
 
   if (flight_data_updated) {
     if (FLIGHT_STATE == FlightState::_FLYING) {
-      uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_mm_per_sec() <= 0.0);
+#ifndef STM32_CORE_VERSION
+      uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_mm_per_sec() <= 0);
+#else
+      uint8_t first_bit = static_cast<uint8_t>(alt_filter.get_vel_m_per_sec() <= 0.0);
+#endif
       vz_neg_count -= vz_neg_q.push_first_pop_last(first_bit);
       vz_neg_count += first_bit;
       if (vz_neg_count > VZ_NEG_Q_BIT_SIZE * 2 / 3) {
@@ -326,7 +363,11 @@ void loop() {
         FLIGHT_STATE = FlightState::_FALLING_FAST;
       }
     } else if (FLIGHT_STATE == FlightState::_FALLING_FAST) {
+#ifndef STM32_CORE_VERSION
       if (alt_filter.get_pos_mm() < ground_alt_mm + MAIN_RECOVERY_ALTITUDE) {
+#else
+      if (alt_filter.get_pos_m() < ground_alt_m + MAIN_RECOVERY_ALTITUDE) {
+#endif
         Serial.println(F("Less than 600m to ground!"));
 
         //TODO: Initiate main recovery HERE!!!!!!!!!!!!!!

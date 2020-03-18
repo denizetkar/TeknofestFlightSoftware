@@ -2,9 +2,9 @@
 #include "QuaternionPID.h"
 
 void rotate_vector_by_quaternion(
-  const float (&q)[4],
-  float _vx, float _vy, float _vz,
-  float& rx, float& ry, float& rz)
+  const double (&q)[4],
+  double _vx, double _vy, double _vz,
+  double& rx, double& ry, double& rz)
 {
   // rotates vector (_vx, _vy, _vz) by unit quaternion q
   rx = _vx * (0.5 - q[2] * q[2] - q[3] * q[3])
@@ -19,7 +19,7 @@ void rotate_vector_by_quaternion(
   rx *= 2.0; ry *= 2.0; rz *= 2.0;
 }
 
-void quaternion_prod(const float (&q_a)[4], const float (&q_b)[4], float (&res)[4]) {
+void quaternion_prod(const double (&q_a)[4], const double (&q_b)[4], double (&res)[4]) {
   res[0] = q_a[0] * q_b[0] - q_a[1] * q_b[1] - q_a[2] * q_b[2] - q_a[3] * q_b[3];
   res[1] = q_a[0] * q_b[1] + q_a[1] * q_b[0] + q_a[2] * q_b[3] - q_a[3] * q_b[2];
   res[2] = q_a[0] * q_b[2] - q_a[1] * q_b[3] + q_a[2] * q_b[0] + q_a[3] * q_b[1];
@@ -27,7 +27,7 @@ void quaternion_prod(const float (&q_a)[4], const float (&q_b)[4], float (&res)[
 }
 
 // constructor
-QuaternionPID::QuaternionPID(float _Kp, float _Ki, float _Kd) :
+QuaternionPID::QuaternionPID(double _Kp, double _Ki, double _Kd) :
   Kp { _Kp }, Ki { _Ki }, Kd { _Kd }
 {
   if (_Kp < 0.0) {
@@ -42,27 +42,27 @@ QuaternionPID::QuaternionPID(float _Kp, float _Ki, float _Kd) :
 }
 
 // getter and setter functions
-void QuaternionPID::getGains(float &_Kp, float &_Ki, float &_Kd) {
+void QuaternionPID::getGains(double &_Kp, double &_Ki, double &_Kd) {
   _Kp = Kp;
   _Ki = Ki;
   _Kd = Kd;
 }
-void QuaternionPID::setGains(float _Kp, float _Ki, float _Kd) {
+void QuaternionPID::setGains(double _Kp, double _Ki, double _Kd) {
   if (_Kp < 0.0 || _Kd < 0.0) return;
   Kp = _Kp;
   Ki = _Ki;
   Kd = _Kd;
 }
-void QuaternionPID::getDesiredQuaternion(float (&_q_d)[4]) {
+void QuaternionPID::getDesiredQuaternion(double (&_q_d)[4]) {
   memcpy(&_q_d, &q_d, sizeof(q_d));
 }
-void QuaternionPID::setDesiredQuaternion(const float (&&_q_d)[4]) {
+void QuaternionPID::setDesiredQuaternion(const double (&&_q_d)[4]) {
   memcpy(&q_d, &_q_d, sizeof(q_d));
 }
 
 // actual pid compute function
-void QuaternionPID::compute(const float (&q_a)[4], float gx, float gy, float gz, float &ux, float &uy, float &uz) {
-  float q_e[4], q_e_coeff, proportionals[3];
+void QuaternionPID::compute(const double (&q_a)[4], double gx, double gy, double gz, double &ux, double &uy, double &uz) {
+  double q_e[4], q_e_coeff, proportionals[3];
   // q_e = q_a^-1 * q_d
   q_e[0] = q_a[0] * q_d[0] + q_a[1] * q_d[1] + q_a[2] * q_d[2] + q_a[3] * q_d[3];
   q_e[1] = q_a[0] * q_d[1] - q_a[1] * q_d[0] - q_a[2] * q_d[3] + q_a[3] * q_d[2];

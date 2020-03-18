@@ -20,7 +20,7 @@ class FinController {
     AccelStepper stepper0, stepper1, stepper2, stepper3;
 #elif defined(FIN_CONTROL_BY_SERVO)
     Servo servo0, servo1, servo2, servo3;
-    float servo0_a, servo1_a, servo2_a, servo3_a;
+    double servo0_a, servo1_a, servo2_a, servo3_a;
     uint32_t before;
 #endif
 
@@ -29,12 +29,12 @@ class FinController {
     FinController(const uint8_t(&&)[4], const uint8_t(&&)[4],
                   const uint8_t(&&)[4], const uint8_t(&&)[4]);
     void begin();
-    void makeFinCorrections(float, float, float);
+    void makeFinCorrections(double, double, double);
     void runMotors();
 #elif defined(FIN_CONTROL_BY_SERVO)
     FinController();
     void begin(uint8_t, uint8_t, uint8_t, uint8_t);
-    void makeFinCorrections(float, float, float);
+    void makeFinCorrections(double, double, double);
     void runMotors();
 #endif
 };

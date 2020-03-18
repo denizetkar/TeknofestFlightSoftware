@@ -21,8 +21,8 @@
 //---------------------------------------------------------------------------------------------------
 // Variable definitions
 
-float madgwick_beta = MadgwickBetaDef;               // 2 * proportional gain (Kp)
-float q_a[4] = { 1.0, 0.0, 0.0, 0.0 };  // quaternion of sensor frame relative to auxiliary frame
+double madgwick_beta = MadgwickBetaDef;               // 2 * proportional gain (Kp)
+double q_a[4] = { 1.0, 0.0, 0.0, 0.0 };  // quaternion of sensor frame relative to auxiliary frame
 
 //====================================================================================================
 // Functions
@@ -30,12 +30,12 @@ float q_a[4] = { 1.0, 0.0, 0.0, 0.0 };  // quaternion of sensor frame relative t
 //---------------------------------------------------------------------------------------------------
 // AHRS algorithm update
 
-void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float deltat) {
-  float recipNorm;
-  float s_a[4];   // errors from absolute orientation
-  float qDot1, qDot2, qDot3, qDot4;
-  float hx, hy;
-  float _2q0mx = 0.0, _2q0my = 0.0, _2q0mz = 0.0, _2q1mx = 0.0, _2bx = 0.0, _2bz = 0.0, 
+void MadgwickAHRSupdate(double gx, double gy, double gz, double ax, double ay, double az, double mx, double my, double mz, double deltat) {
+  double recipNorm;
+  double s_a[4];   // errors from absolute orientation
+  double qDot1, qDot2, qDot3, qDot4;
+  double hx, hy;
+  double _2q0mx = 0.0, _2q0my = 0.0, _2q0mz = 0.0, _2q1mx = 0.0, _2bx = 0.0, _2bz = 0.0, 
         _2q1, _2q2, q0q0, q0q1, q0q2, q1q1, q1q3, q2q2, q3q3, fg0 = 0.0, fg1 = 0.0, fg2 = 0.0, fb0 = 0.0, fb1 = 0.0, fb2 = 0.0;
 
   // Rate of change of quaternion from gyroscope

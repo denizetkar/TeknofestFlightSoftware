@@ -19,12 +19,21 @@ static const unsigned char UBLOX_INIT[] PROGMEM = {
 
 // latitude & longitude in degrees into x,y
 // coordinates in millimeters on the surface of earth
-void lat_lon_to_x_y_mm(float lat, float lon, int64_t &x, int64_t &y)
+#ifndef STM32_CORE_VERSION
+void lat_lon_to_x_y_mm(double lat, double lon, int64_t &x, int64_t &y)
 {
-  float lat_rad = radians(lat);
+  double lat_rad = radians(lat);
   x = static_cast<int64_t>( 111132952.548 * lat );
   y = static_cast<int64_t>( (((111412.84 * cos(lat_rad) - 93.5 * cos(3.0 * lat_rad)) + 0.118 * cos(5.0 * lat_rad)) * lon) * 1000.0 );
 }
+#else
+void lat_lon_to_x_y_m(double lat, double lon, double &x, double &y)
+{
+  double lat_rad = radians(lat);
+  x = 111132.9525477777777777777777777 * lat;
+  y = ((111412.84 * cos(lat_rad) - 93.5 * cos(3.0 * lat_rad)) + 0.118 * cos(5.0 * lat_rad)) * lon;
+}
+#endif
 
 Neo6MGPS::Neo6MGPS(int GPS_TX_PIN, int GPS_RX_PIN)
   : ss{ GPS_TX_PIN, GPS_RX_PIN }
@@ -42,6 +51,7 @@ void Neo6MGPS::begin(uint16_t GPS_BAUD_RATE)
 
 // This function attempts to read GPS module stream and search for 4 GPS satellites.
 // If not possible it returns false, otherwise it updates lat-lon-alt and returns true.
+#ifndef STM32_CORE_VERSION
 bool Neo6MGPS::try_read_gps(int64_t& lat_mm, int64_t& lon_mm, int64_t& alt_mm, uint8_t num_gps)
 {
   while (ss.available() > 0){
@@ -54,3 +64,17 @@ bool Neo6MGPS::try_read_gps(int64_t& lat_mm, int64_t& lon_mm, int64_t& alt_mm, u
   }
   return false;
 }
+#else
+bool Neo6MGPS::try_read_gps(double& lat_m, double& lon_m, double& alt_m, uint8_t num_gps)
+{
+  while (ss.available() > 0){
+    gps.encode(ss.read());
+    if (gps.satellites.isUpdated() && gps.satellites.value() >= num_gps && gps.location.isUpdated()){
+      lat_lon_to_x_y_m(gps.location.lat(), gps.location.lng(), lat_m, lon_m);
+      alt_m = gps.altitude.meters();
+      return true;
+    }
+  }
+  return false;
+}
+#endif

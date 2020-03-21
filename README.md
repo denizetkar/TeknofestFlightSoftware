@@ -1,13 +1,17 @@
 # TeknofestFlightSoftware
-Teknofest Roket Yarışması uçuş bilgisayarı kodudur. Arduino Uno, 4 MG995, MPU9250 ve NEO 6M kullanılmıştır.
+Teknofest Roket Yarışması uçuş bilgisayarı kodudur. Ana uçuş bilgisayarı (STM32F103C8T6 - blue pill), yedek uçuş bilgisayarı (Arduino Uno), 4 MG995, MPU9250 ve NEO 6M kullanılmıştır.
 ## Bağlantı Şeması
-UNO Ground -> MPU9250 Ground, NEO 6M Ground  
-UNO 5V     -> MPU9250 Vcc, NEO 6M Vcc  
-UNO A4     -> MPU9250 SDA  
-UNO A5     -> MPU9250 SCL  
-UNO PIN3   -> NEO 6M RX  
-UNO PIN4   -> NEO 6M TX  
-UNO PIN8   -> MG995_0 PWM  
-UNO PIN9   -> MG995_1 PWM  
-UNO PIN10  -> MG995_2 PWM  
-UNO PIN11  -> MG995_3 PWM  
+STM32F103C8T6 GND  -> Arduino Uno GND, MPU9250 GND, NEO 6M GND  
+Power Supply 3.3V  -> MPU9250 Vcc, NEO 6M Vcc  
+STM32F103C8T6 PA7  -> MPU9250 MOSI  
+STM32F103C8T6 PA6  -> MPU9250 MISO  
+STM32F103C8T6 PA5  -> MPU9250 CLK  
+STM32F103C8T6 PA4  -> MPU9250 CS  
+STM32F103C8T6 PA2  -> NEO 6M RX  
+STM32F103C8T6 PA3  -> NEO 6M TX  
+STM32F103C8T6 PB10 -> UNO PIN2  
+STM32F103C8T6 PB11 -> UNO PIN4  
+STM32F103C8T6 PA6  -> MG995_0 PWM  
+STM32F103C8T6 PA7  -> MG995_1 PWM  
+STM32F103C8T6 PB0  -> MG995_2 PWM  
+STM32F103C8T6 PB1  -> MG995_3 PWM  

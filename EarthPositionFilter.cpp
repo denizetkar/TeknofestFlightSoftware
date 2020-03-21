@@ -18,6 +18,10 @@ void EarthPositionFilter::get_P(double (&P_)[2][2])
 {
   memcpy(&P_, &P, sizeof(P));
 }
+double EarthPositionFilter::get_P(uint8_t i, uint8_t j)
+{
+  return P[i][j];
+}
 double EarthPositionFilter::get_deltat()
 {
   return dt;
@@ -123,6 +127,10 @@ double EarthPositionFilter::get_vel_m_per_sec()
 void EarthPositionFilter::get_P(double (&P_)[2][2])
 {
   memcpy(&P_, &P, sizeof(P));
+}
+double EarthPositionFilter::get_P(uint8_t i, uint8_t j)
+{
+  return P[i][j];
 }
 double EarthPositionFilter::get_deltat()
 {

@@ -64,11 +64,12 @@ class EarthPositionFilter
 #ifndef STM32_CORE_VERSION
     // getter functions
     int64_t get_pos_mm();
-    double   get_vel_mm_per_sec();
+    double  get_vel_mm_per_sec();
     void    get_P(double (&)[2][2]);
-    double   get_deltat();
-    double   get_proc_var();
-    double   get_R();
+    double  get_P(uint8_t, uint8_t);
+    double  get_deltat();
+    double  get_proc_var();
+    double  get_R();
     // setter functions
     void    set_pos_mm(int64_t);
     void    set_vel_mm_per_sec(double);
@@ -85,6 +86,7 @@ class EarthPositionFilter
     double get_pos_m();
     double get_vel_m_per_sec();
     void   get_P(double (&)[2][2]);
+    double get_P(uint8_t, uint8_t);
     double get_deltat();
     double get_proc_var();
     double get_R();

@@ -7,6 +7,12 @@
 
 #include "Neo6MGPS.h"
 
+#define TSA_TIME_IN 0
+#define TSA_RESPONSE_TIME_OUT 5000
+#define PJON_MAX_PACKETS 0
+#define PJON_PACKET_MAX_LENGTH 16
+#include <PJON.h>
+
 #include "EarthPositionFilter.h"
 #include "FinController.h"
 
@@ -25,13 +31,24 @@
 #define TAKEOFF_ACCELERATION_SQ 1.0
 
 #ifndef STM32_CORE_VERSION
+#define GPS_TX_PIN 2
 #define GPS_RX_PIN 3
-#define GPS_TX_PIN 4
 #else
-#define GPS_RX_PIN PB10
-#define GPS_TX_PIN PB11
+#define GPS_RX_PIN PA2
+#define GPS_TX_PIN PA3
 #endif
 #define GPS_BAUD_RATE 9600
+
+#ifndef STM32_CORE_VERSION
+#define REDUNDANT_COMP_TX_PIN 4
+#define REDUNDANT_COMP_RX_PIN 5
+#else
+#define REDUNDANT_COMP_TX_PIN PB11
+#define REDUNDANT_COMP_RX_PIN PB10
+#endif
+#define REDUNDANT_COMP_BAUD_RATE 38400
+#define REDUNDANT_COMP_BUS_ID 44
+#define MAIN_COMP_BUS_ID 45
 
 // TODO: Decide which motor type to use for fin correction
 #ifndef STM32_CORE_VERSION
@@ -68,6 +85,7 @@
 #else
 #define MAIN_RECOVERY_ALTITUDE 600
 #endif
+#define MAIN_COMP_SAFE_FAIL_TIMEOUT 1000000
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop objects-----------------------------------------------------
@@ -85,6 +103,14 @@ QuaternionPID controller{ 50.0, 1.0, 5.0 };
 
 // The Neo-6M GPS object
 Neo6MGPS neo6m(GPS_TX_PIN, GPS_RX_PIN);
+
+// The serial object to communicate with the redundant computer
+#ifndef STM32_CORE_VERSION
+NeoSWSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
+#else
+HardwareSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
+#endif
+PJON<ThroughSerialAsync> secure_rs(MAIN_COMP_BUS_ID);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
@@ -125,15 +151,14 @@ int64_t lat_mm, lon_mm, alt_mm, ground_alt_mm;
 #else
 double roll, pitch, yaw, X, Y, Z, ux, uy, uz, q_a_tn[4], deltat_sec, lat_m, lon_m, alt_m, ground_alt_m;
 #endif
-uint32_t before = 0, deltat;
+uint32_t last_imu_read_time, last_gps_read_time, deltat;
 uint8_t vz_neg_count = 0;
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup function-------------------------------------------------------------
 
 void setup() {
-  // Serial to display data
-  Serial.begin(2000000);
+  Serial.begin(230400);
   while (!Serial);
 
   // Give initial values of 0 degrees
@@ -147,6 +172,12 @@ void setup() {
 
   Serial.println(F("Initializing GPS module..."));
   neo6m.begin(GPS_BAUD_RATE);
+
+  Serial.println(F("Initializing communication with redundant computer..."));
+  redundant_s.begin(REDUNDANT_COMP_BAUD_RATE);
+  secure_rs.strategy.set_serial(&redundant_s);
+  secure_rs.include_sender_info(false);
+  secure_rs.begin();
 
   // Start communication with IMU
   Serial.println(F("Initializing IMU..."));
@@ -229,7 +260,8 @@ void setup() {
 #endif
   }
 
-  // TODO: Send _BEFORE_FLIGHT signal to the backup computer, and wait for transmission!
+  Serial.println(F("Sending FLIGHT_STATE to the redundant computer and waiting for ACK..."));
+  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK);
   // TODO: Let the ground station know that flight computer is READY.
 
   // Wait for high acceleration
@@ -245,7 +277,8 @@ void setup() {
 
   // The rocket is flying now
   FLIGHT_STATE = FlightState::_FLYING;
-  before = micros();
+  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK);
+  last_imu_read_time = last_gps_read_time = micros();
 }
 
 //-----------------------------------------------------------------------------------------------
@@ -254,11 +287,12 @@ void setup() {
 void loop() {
   bool flight_data_updated = false;
 
-  // TODO: Send FLIGHT_STATE to the secondary flight computer EVERY 500ms!
+  // Send FLIGHT_STATE to the secondary flight computer !
+  redundant_s.write((uint8_t)FLIGHT_STATE);
 
   // Attempt to update flight data (orientation, position and velocity) from IMU
   if(IMU.tryReadSensor()) {
-    deltat = micros() - before;
+    deltat = micros() - last_imu_read_time;
     deltat_sec = deltat / 1000000.0;
 
     // Update rotation of the sensor frame with respect to the NWU frame
@@ -308,9 +342,11 @@ void loop() {
     Serial.print(F("\tZ:\t"));
     Serial.print(alt_filter.get_pos_m());
 #endif
+    Serial.print(F("\tvar(Vz):\t"));
+    Serial.print(alt_filter.get_P(1, 1), 4);
     Serial.println();
     Serial.flush();
-    before += deltat;
+    last_imu_read_time += deltat;
 
     if (FLIGHT_STATE == FlightState::_FLYING) {
       // Find corrective actions ux, uy, uz
@@ -332,6 +368,7 @@ void loop() {
     lon_filter.update(lon_mm);
     alt_filter.update(alt_mm);
     flight_data_updated = true;
+    last_gps_read_time = micros();
   }
 #else
   if (neo6m.try_read_gps(lat_m, lon_m, alt_m)) {
@@ -339,11 +376,20 @@ void loop() {
     lon_filter.update(lon_m);
     alt_filter.update(alt_m);
     flight_data_updated = true;
+    last_gps_read_time = micros();
   }
 #endif
 
   // TODO: If v_z variance is too high OR flight data has not been updated for 1 second,
   //       then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely! Then loop here forever.
+  deltat = micros();
+  if ((deltat - last_imu_read_time) > MAIN_COMP_SAFE_FAIL_TIMEOUT ||
+      (deltat - last_gps_read_time) > MAIN_COMP_SAFE_FAIL_TIMEOUT)
+  {
+    Serial.println(F("Main computer failed safely!"));
+    FLIGHT_STATE = FlightState::_MAIN_COMP_SAFE_FAIL;
+    fin_controller.makeFinCorrections(0, 0, 0);
+  }
 
   if (flight_data_updated) {
     if (FLIGHT_STATE == FlightState::_FLYING) {
@@ -375,11 +421,6 @@ void loop() {
       }
     } else if (FLIGHT_STATE == FlightState::_FALLING_SLOW) {
     } else /*FlightState::_MAIN_COMP_SAFE_FAIL*/ {}
-  }
-
-  // If imu did not update for 500ms, then rotate fins back to 0 degrees
-  if (FLIGHT_STATE == FlightState::_FLYING && (micros() - before) > 500000) {
-    fin_controller.makeFinCorrections(0, 0, 0);
   }
 
   // Let the motors run

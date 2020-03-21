@@ -24,6 +24,14 @@
 //------------------------------------------------------------------------------------------------
 //---------------------definitions----------------------------------------------------------------
 
+#ifndef STM32_CORE_VERSION
+#define IMU_CS_PIN 10
+#else
+#define IMU_MOSI_PIN PA7
+#define IMU_MISO_PIN PA6
+#define IMU_CLK_PIN PA5
+#define IMU_CS_PIN PA4
+#endif
 #define IMU_CALIB_MAX_COUNT 500
 #define MIN_NUM_GPS 5
 
@@ -34,8 +42,8 @@
 #define GPS_TX_PIN 2
 #define GPS_RX_PIN 3
 #else
-#define GPS_RX_PIN PA2
 #define GPS_TX_PIN PA3
+#define GPS_RX_PIN PA2
 #endif
 #define GPS_BAUD_RATE 9600
 
@@ -53,20 +61,20 @@
 // TODO: Decide which motor type to use for fin correction
 #ifndef STM32_CORE_VERSION
 #ifndef FIN_CONTROL_BY_SERVO
-// 8, 9, 10, 11 --> 8, 10, 9, 11 (ATTENTION!)
-#define CONTROLLER0_PINS { 8, 10, 9, 11 }
+// 6, 7, 8, 9 --> 6, 8, 7, 9 (ATTENTION!)
+#define CONTROLLER0_PINS { 6, 8, 7, 9 }
 #define CONTROLLER1_PINS /* NOT ENOUGH PINS ON UNO */
 #define CONTROLLER2_PINS /* NOT ENOUGH PINS ON UNO */
 #define CONTROLLER3_PINS /* NOT ENOUGH PINS ON UNO */
 #else
-#define CONTROLLER0_PINS 8
-#define CONTROLLER1_PINS 9
-#define CONTROLLER2_PINS 10
-#define CONTROLLER3_PINS 11
+#define CONTROLLER0_PINS 6
+#define CONTROLLER1_PINS 7
+#define CONTROLLER2_PINS 8
+#define CONTROLLER3_PINS 9
 #endif
 #else
 #ifndef FIN_CONTROL_BY_SERVO
-// 8, 9, 10, 11 --> 8, 10, 9, 11 (ATTENTION!)
+// 6, 7, 8, 9 --> 6, 8, 7, 9 (ATTENTION!)
 #define CONTROLLER0_PINS { PA4, PA5, PA6, PB9 }
 #define CONTROLLER1_PINS { PB8, PB5, PB4, PB3 }
 #define CONTROLLER2_PINS { PA15, PA12, PA11, PA8 }
@@ -91,11 +99,8 @@
 //---------------------setup and loop objects-----------------------------------------------------
 
 // An MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
-#ifndef STM32_CORE_VERSION
-MPU9250 IMU(I2c, 0x68);
-#else
-MPU9250 IMU(Wire, 0x68);
-#endif
+SPIClass imu_spi(IMU_MOSI_PIN, IMU_MISO_PIN, IMU_CLK_PIN);
+MPU9250 IMU(imu_spi, IMU_CS_PIN);
 int status;
 
 // A PID controller object
@@ -110,7 +115,6 @@ NeoSWSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
 #else
 HardwareSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
 #endif
-PJON<ThroughSerialAsync> secure_rs(MAIN_COMP_BUS_ID);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
@@ -158,6 +162,8 @@ uint8_t vz_neg_count = 0;
 //---------------------setup function-------------------------------------------------------------
 
 void setup() {
+  PJON<ThroughSerialAsync> secure_rs(MAIN_COMP_BUS_ID);
+
   Serial.begin(230400);
   while (!Serial);
 
@@ -380,15 +386,21 @@ void loop() {
   }
 #endif
 
-  // TODO: If v_z variance is too high OR flight data has not been updated for 1 second,
-  //       then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely! Then loop here forever.
+  // If flight data has not been updated for long enough by IMU or GPS,
+  // then send _MAIN_COMP_SAFE_FAIL to backup computer to fail safely!
   deltat = micros();
-  if ((deltat - last_imu_read_time) > MAIN_COMP_SAFE_FAIL_TIMEOUT ||
-      (deltat - last_gps_read_time) > MAIN_COMP_SAFE_FAIL_TIMEOUT)
+  if (FLIGHT_STATE != FlightState::_MAIN_COMP_SAFE_FAIL)
   {
-    Serial.println(F("Main computer failed safely!"));
-    FLIGHT_STATE = FlightState::_MAIN_COMP_SAFE_FAIL;
-    fin_controller.makeFinCorrections(0, 0, 0);
+    if (deltat - last_imu_read_time > MAIN_COMP_SAFE_FAIL_TIMEOUT) {
+      Serial.println(F("Main computer failed safely: IMU data lost!"));
+      FLIGHT_STATE = FlightState::_MAIN_COMP_SAFE_FAIL;
+      fin_controller.makeFinCorrections(0, 0, 0);
+    }
+    else if (deltat - last_gps_read_time > MAIN_COMP_SAFE_FAIL_TIMEOUT * 10) {
+      Serial.println(F("Main computer failed safely: GPS data lost!"));
+      FLIGHT_STATE = FlightState::_MAIN_COMP_SAFE_FAIL;
+      fin_controller.makeFinCorrections(0, 0, 0);
+    }
   }
 
   if (flight_data_updated) {

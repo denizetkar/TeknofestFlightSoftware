@@ -24,29 +24,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <Arduino.h>
 #include "MPU9250.h"
 
-#ifndef STM32_CORE_VERSION
-#define I2C_TIMEOUT_MS 10
-
-/* MPU9250 object, input the I2C bus and address */
-MPU9250::MPU9250(I2C &bus, uint8_t address)
-#else
-MPU9250::MPU9250(TwoWire &bus, uint8_t address)
-#endif
-  : _i2c { &bus }, // I2C bus
-  _address { address } // I2C address
-{}
+/* MPU9250 object, input the SPI bus and chip select pin */
+MPU9250::MPU9250(SPIClass &bus,uint8_t csPin){
+  _spi = &bus; // SPI bus
+  _csPin = csPin; // chip select pin
+}
 
 /* starts communication with the MPU-9250 */
-int MPU9250::begin(){
-  // starting the I2C bus
-  _i2c->begin();
-#ifndef STM32_CORE_VERSION
-  // set a timeout
-  _i2c->timeOut(I2C_TIMEOUT_MS);
-#else
-  // setting the I2C clock
-  _i2c->setClock(I2C_RATE);
-#endif
+int8_t MPU9250::begin(){
+  // setting CS pin to output
+  pinMode(_csPin,OUTPUT);
+  // setting CS pin high
+  digitalWrite(_csPin,HIGH);
+  // begin SPI communication
+  _spi->begin();
 
   // select clock source to gyro
   if(writeRegister(PWR_MGMNT_1,CLOCK_SEL_PLL) < 0){
@@ -159,7 +150,7 @@ int MPU9250::begin(){
 }
 
 /* sets the accelerometer full scale range to values other than default */
-int MPU9250::setAccelRange(AccelRange range) {
+int8_t MPU9250::setAccelRange(AccelRange range) {
   switch(range) {
     case ACCEL_RANGE_2G: {
       // setting the accel range to 2G
@@ -199,7 +190,7 @@ int MPU9250::setAccelRange(AccelRange range) {
 }
 
 /* sets the gyro full scale range to values other than default */
-int MPU9250::setGyroRange(GyroRange range) {
+int8_t MPU9250::setGyroRange(GyroRange range) {
   switch(range) {
     case GYRO_RANGE_250DPS: {
       // setting the gyro range to 250DPS
@@ -239,7 +230,7 @@ int MPU9250::setGyroRange(GyroRange range) {
 }
 
 /* sets the DLPF bandwidth to values other than default */
-int MPU9250::setDlpfBandwidth(DlpfBandwidth bandwidth) {
+int8_t MPU9250::setDlpfBandwidth(DlpfBandwidth bandwidth) {
   switch(bandwidth) {
     case DLPF_BANDWIDTH_184HZ: {
       if(writeRegister(ACCEL_CONFIG2,ACCEL_DLPF_184) < 0){ // setting accel bandwidth to 184Hz
@@ -301,7 +292,7 @@ int MPU9250::setDlpfBandwidth(DlpfBandwidth bandwidth) {
 }
 
 /* sets the sample rate divider to values other than default */
-int MPU9250::setSrd(uint8_t srd) {
+int8_t MPU9250::setSrd(uint8_t srd) {
   /* setting the sample rate divider to 19 to facilitate setting up magnetometer */
   if(writeRegister(SMPDIV,19) < 0){ // setting the sample rate divider
     return -1;
@@ -342,7 +333,7 @@ int MPU9250::setSrd(uint8_t srd) {
 }
 
 /* enables the data ready interrupt */
-int MPU9250::enableDataReadyInterrupt() {
+int8_t MPU9250::enableDataReadyInterrupt() {
   /* setting the interrupt */
   if (writeRegister(INT_PIN_CFG,INT_PULSE_50US) < 0){ // setup interrupt, 50 us pulse
     return -1;
@@ -354,7 +345,7 @@ int MPU9250::enableDataReadyInterrupt() {
 }
 
 /* disables the data ready interrupt */
-int MPU9250::disableDataReadyInterrupt() {
+int8_t MPU9250::disableDataReadyInterrupt() {
   if(writeRegister(INT_ENABLE,INT_DISABLE) < 0){ // disable interrupt
     return -1;
   }  
@@ -363,7 +354,7 @@ int MPU9250::disableDataReadyInterrupt() {
 
 /* checks if raw data is ready to read */
 bool MPU9250::isDataReady() {
-  uint8_t res;
+  uint8_t res = 0;
   if (readRegisters(INT_STATUS, 1, &res) < 0) {
     return false;
   }
@@ -380,7 +371,7 @@ bool MPU9250::tryReadSensor() {
 }
 
 /* reads the most current data from MPU9250 and stores in buffer */
-int MPU9250::readSensor() {
+int8_t MPU9250::readSensor() {
   double X, Y, Z;
   // grab the data from the MPU9250
   if (readRegisters(ACCEL_OUT, 21, _buffer) < 0) {
@@ -472,7 +463,7 @@ double MPU9250::getTemperature_C() {
 }
 
 /* estimates the gyro biases */
-int MPU9250::calibrateGyro() {
+int8_t MPU9250::calibrateGyro() {
   // set the range, bandwidth, and srd
   if (setGyroRange(GYRO_RANGE_250DPS) < 0) {
     return -1;
@@ -622,33 +613,14 @@ void MPU9250::setMagTM(const double (&&magTM)[3][3]) {
   memcpy(&_hTM, &magTM, sizeof(_hTM));
 }
 
-/* reset the I2C */
-#ifdef STM32_CORE_VERSION
-void MPU9250::resetI2C()
-{
-  _i2c->end();
-  _i2c->begin();
-  _i2c->setClock(I2C_RATE);
-}
-#endif
-
 /* writes a byte to MPU9250 register given a register address and data */
 int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
-  uint8_t res;
-  /* write data to device */
-#ifndef STM32_CORE_VERSION
-  res = _i2c->write(_address, subAddress, data);
-  delay(10);
-  return (res == 0) ? 1 : -1;
-#else
-  _i2c->beginTransmission(_address); // open the device
-  _i2c->write(subAddress); // write the register address
-  _i2c->write(data); // write the data
-  res = _i2c->endTransmission();
-  if (res != 0) {
-    resetI2C();
-    return -1;
-  }
+  _spi->beginTransaction(SPISettings(SPI_LS_CLOCK, MSBFIRST, SPI_MODE3)); // begin the transaction
+  digitalWrite(_csPin,LOW); // select the MPU9250 chip
+  _spi->transfer(subAddress); // write the register address
+  _spi->transfer(data); // write the data
+  digitalWrite(_csPin,HIGH); // deselect the MPU9250 chip
+  _spi->endTransaction(); // end the transaction
 
   delay(10);
   /* read back the register */
@@ -658,37 +630,22 @@ int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
     return 1;
   }
   else{
-    resetI2C();
     return -1;
   }
-#endif
 }
 
 /* reads registers from MPU9250 given a starting register address, number of bytes, and a pointer to store data */
 int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
-#ifndef STM32_CORE_VERSION
-  return _i2c->read(_address, subAddress, count, dest) == 0 ? 1 : -1;
-#else
-  uint8_t res;
-  _i2c->beginTransmission(_address); // open the device
-  _i2c->write(subAddress); // specify the starting register address
-  res = _i2c->endTransmission(false);
-  if (res != 0) {
-    resetI2C();
-    return -1;
+  // begin the transaction
+  _spi->beginTransaction(SPISettings(SPI_LS_CLOCK, MSBFIRST, SPI_MODE3));
+  digitalWrite(_csPin,LOW); // select the MPU9250 chip
+  _spi->transfer(subAddress | SPI_READ); // specify the starting register address
+  for(uint8_t i = 0; i < count; i++){
+    dest[i] = _spi->transfer(0x00); // read the data
   }
-
-  _numBytes = _i2c->requestFrom(_address, count); // specify the number of bytes to receive
-  if (_numBytes == count) {
-    for(uint8_t i = 0; i < count; i++){
-      dest[i] = _i2c->read();
-    }
-    return 1;
-  } else {
-    resetI2C();
-    return -1;
-  }
-#endif
+  digitalWrite(_csPin,HIGH); // deselect the MPU9250 chip
+  _spi->endTransaction(); // end the transaction
+  return 1;
 }
 
 /* writes a register to the AK8963 given a register address and data */

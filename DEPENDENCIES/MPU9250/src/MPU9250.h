@@ -26,17 +26,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include <Arduino.h>
 
-#ifndef STM32_CORE_VERSION
-#include <I2C.h>    // I2C library
-#else
-
-#include <Wire.h>    // I2C library
-
-#ifndef I2C_RATE
-#define I2C_RATE 100000
-#endif
-
-#endif
+#include <SPI.h>
 
 class MPU9250 {
   public:
@@ -78,21 +68,17 @@ class MPU9250 {
       LP_ACCEL_ODR_250HZ = 10,
       LP_ACCEL_ODR_500HZ = 11
     };
-#ifndef STM32_CORE_VERSION
-    MPU9250(I2C &bus,uint8_t address);
-#else
-    MPU9250(TwoWire &bus,uint8_t address);
-#endif
-    int begin();
-    int setAccelRange(AccelRange range);
-    int setGyroRange(GyroRange range);
-    int setDlpfBandwidth(DlpfBandwidth bandwidth);
-    int setSrd(uint8_t srd);
-    int enableDataReadyInterrupt();
-    int disableDataReadyInterrupt();
+    MPU9250(SPIClass &bus,uint8_t csPin);
+    int8_t begin();
+    int8_t setAccelRange(AccelRange range);
+    int8_t setGyroRange(GyroRange range);
+    int8_t setDlpfBandwidth(DlpfBandwidth bandwidth);
+    int8_t setSrd(uint8_t srd);
+    int8_t enableDataReadyInterrupt();
+    int8_t disableDataReadyInterrupt();
     bool isDataReady();
     bool tryReadSensor();
-    int readSensor();
+    int8_t readSensor();
     double getAccelX_g();
     double getAccelY_g();
     double getAccelZ_g();
@@ -104,7 +90,7 @@ class MPU9250 {
     double getMagZ_uT();
     double getTemperature_C();
     
-    int calibrateGyro();
+    int8_t calibrateGyro();
     double getGyroBiasX_rads();
     double getGyroBiasY_rads();
     double getGyroBiasZ_rads();
@@ -128,14 +114,12 @@ class MPU9250 {
     void setMagCalZ(double bias);
     void setMagTM(const double (&&)[3][3]);
   protected:
-    // i2c
-    uint8_t _address;
-#ifndef STM32_CORE_VERSION
-    I2C *_i2c;
-#else
-    TwoWire *_i2c;
-#endif
-    size_t _numBytes; // number of bytes received from I2C
+    // spi
+    SPIClass *_spi;
+    uint8_t _csPin;
+    static constexpr uint8_t SPI_READ = 0x80;
+    static constexpr uint32_t SPI_LS_CLOCK = 1000000;  // 1 MHz
+    static constexpr uint32_t SPI_HS_CLOCK = 15000000; // 15 MHz
     // buffer for reading from sensor
     uint8_t _buffer[21];
     // data counts
@@ -252,9 +236,6 @@ class MPU9250 {
     static constexpr uint8_t AK8963_ASA = 0x10;
     static constexpr uint8_t AK8963_WHO_AM_I = 0x00;
     // private functions
-#ifdef STM32_CORE_VERSION
-    void resetI2C();
-#endif
     int writeRegister(uint8_t subAddress, uint8_t data);
     int readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest);
     int writeAK8963Register(uint8_t subAddress, uint8_t data);

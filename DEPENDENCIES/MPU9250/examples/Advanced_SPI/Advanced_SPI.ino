@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include "MPU9250.h"
 
-// an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
-MPU9250 IMU(Wire,0x68);
+// an MPU9250 object with the MPU-9250 sensor on SPI bus with CS pin 10
+MPU9250 IMU(SPI, 10);
 int status;
 
 void setup() {
   // serial to display data
-  Serial.begin(115200);
+  Serial.begin(230400);
   while(!Serial) {}
 
   // start communication with IMU 
@@ -76,5 +76,5 @@ void loop() {
   Serial.println(IMU.getMagZ_uT(),6);
   Serial.print("Temperature: ");
   Serial.println(IMU.getTemperature_C(),6);
-  delay(100);
+  delay(10);
 }

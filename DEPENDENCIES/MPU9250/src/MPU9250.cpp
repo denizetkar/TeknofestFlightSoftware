@@ -614,7 +614,7 @@ void MPU9250::setMagTM(const double (&&magTM)[3][3]) {
 }
 
 /* writes a byte to MPU9250 register given a register address and data */
-int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
+int8_t MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
   _spi->beginTransaction(SPISettings(SPI_LS_CLOCK, MSBFIRST, SPI_MODE3)); // begin the transaction
   digitalWrite(_csPin,LOW); // select the MPU9250 chip
   _spi->transfer(subAddress); // write the register address
@@ -635,7 +635,7 @@ int MPU9250::writeRegister(uint8_t subAddress, uint8_t data){
 }
 
 /* reads registers from MPU9250 given a starting register address, number of bytes, and a pointer to store data */
-int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
+int8_t MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
   // begin the transaction
   _spi->beginTransaction(SPISettings(SPI_LS_CLOCK, MSBFIRST, SPI_MODE3));
   digitalWrite(_csPin,LOW); // select the MPU9250 chip
@@ -649,7 +649,7 @@ int MPU9250::readRegisters(uint8_t subAddress, uint8_t count, uint8_t* dest){
 }
 
 /* writes a register to the AK8963 given a register address and data */
-int MPU9250::writeAK8963Register(uint8_t subAddress, uint8_t data){
+int8_t MPU9250::writeAK8963Register(uint8_t subAddress, uint8_t data){
   // set slave 0 to the AK8963 and set for write
 	if (writeRegister(I2C_SLV0_ADDR,AK8963_I2C_ADDR) < 0) {
     return -1;
@@ -678,7 +678,7 @@ int MPU9250::writeAK8963Register(uint8_t subAddress, uint8_t data){
 }
 
 /* reads registers from the AK8963 */
-int MPU9250::readAK8963Registers(uint8_t subAddress, uint8_t count, uint8_t* dest){
+int8_t MPU9250::readAK8963Registers(uint8_t subAddress, uint8_t count, uint8_t* dest){
   // set slave 0 to the AK8963 and set for read
 	if (writeRegister(I2C_SLV0_ADDR,AK8963_I2C_ADDR | I2C_READ_FLAG) < 0) {
     return -1;
@@ -697,7 +697,7 @@ int MPU9250::readAK8963Registers(uint8_t subAddress, uint8_t count, uint8_t* des
 }
 
 /* gets the MPU9250 WHO_AM_I register value, expected to be 0x71 */
-int MPU9250::whoAmI(){
+uint8_t MPU9250::whoAmI(){
   // read the WHO AM I register
   if (readRegisters(WHO_AM_I,1,_buffer) < 0) {
     return -1;
@@ -707,7 +707,7 @@ int MPU9250::whoAmI(){
 }
 
 /* gets the AK8963 WHO_AM_I register value, expected to be 0x48 */
-int MPU9250::whoAmIAK8963(){
+uint8_t MPU9250::whoAmIAK8963(){
   // read the WHO AM I register
   if (readAK8963Registers(AK8963_WHO_AM_I,1,_buffer) < 0) {
     return -1;

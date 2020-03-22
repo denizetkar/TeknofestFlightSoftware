@@ -63,9 +63,9 @@
 #ifndef FIN_CONTROL_BY_SERVO
 // 6, 7, 8, 9 --> 6, 8, 7, 9 (ATTENTION!)
 #define CONTROLLER0_PINS { 6, 8, 7, 9 }
-#define CONTROLLER1_PINS /* NOT ENOUGH PINS ON UNO */
-#define CONTROLLER2_PINS /* NOT ENOUGH PINS ON UNO */
-#define CONTROLLER3_PINS /* NOT ENOUGH PINS ON UNO */
+#define CONTROLLER1_PINS { NUM_DIGITAL_PINS, NUM_DIGITAL_PINS + 1, NUM_DIGITAL_PINS + 2, NUM_DIGITAL_PINS + 3 } /* NOT ENOUGH PINS ON UNO */
+#define CONTROLLER2_PINS { NUM_DIGITAL_PINS, NUM_DIGITAL_PINS + 1, NUM_DIGITAL_PINS + 2, NUM_DIGITAL_PINS + 3 } /* NOT ENOUGH PINS ON UNO */
+#define CONTROLLER3_PINS { NUM_DIGITAL_PINS, NUM_DIGITAL_PINS + 1, NUM_DIGITAL_PINS + 2, NUM_DIGITAL_PINS + 3 } /* NOT ENOUGH PINS ON UNO */
 #else
 #define CONTROLLER0_PINS 6
 #define CONTROLLER1_PINS 7
@@ -75,8 +75,8 @@
 #else
 #ifndef FIN_CONTROL_BY_SERVO
 // 6, 7, 8, 9 --> 6, 8, 7, 9 (ATTENTION!)
-#define CONTROLLER0_PINS { PA4, PA5, PA6, PB9 }
-#define CONTROLLER1_PINS { PB8, PB5, PB4, PB3 }
+#define CONTROLLER0_PINS { PC15, PB9, PB8, PB7 }
+#define CONTROLLER1_PINS { PB6, PB5, PB4, PB3 }
 #define CONTROLLER2_PINS { PA15, PA12, PA11, PA8 }
 #define CONTROLLER3_PINS { PB15, PB14, PB13, PB12 }
 #else
@@ -99,12 +99,16 @@
 //---------------------setup and loop objects-----------------------------------------------------
 
 // An MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
+#ifndef STM32_CORE_VERSION
+MPU9250 IMU(SPI, IMU_CS_PIN);
+#else
 SPIClass imu_spi(IMU_MOSI_PIN, IMU_MISO_PIN, IMU_CLK_PIN);
 MPU9250 IMU(imu_spi, IMU_CS_PIN);
+#endif
 int status;
 
 // A PID controller object
-QuaternionPID controller{ 50.0, 1.0, 5.0 };
+QuaternionPID controller{ 5.0, 0.5, 2.0 };
 
 // The Neo-6M GPS object
 Neo6MGPS neo6m(GPS_TX_PIN, GPS_RX_PIN);

@@ -10,8 +10,6 @@
 #include <AccelStepper.h>
 #elif defined(FIN_CONTROL_BY_SERVO)
 #include <Servo.h>
-#define SERVO_ZERO_ANGLE 90
-#define SERVO_PWM_PERIOD_MS 20
 #endif
 
 class FinController {

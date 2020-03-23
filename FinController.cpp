@@ -43,6 +43,11 @@ void FinController::runMotors()
 
 #elif defined(FIN_CONTROL_BY_SERVO)
 
+#define SERVO_ZERO_ANGLE 90
+#define SERVO_PWM_PERIOD_MS 20
+#define SERVO_MIN_PULSE_US 1000
+#define SERVO_MAX_PULSE_US 2000
+
 FinController::FinController() :
   before{ 0 }
 {
@@ -51,10 +56,10 @@ FinController::FinController() :
 void FinController::begin(uint8_t pin0, uint8_t pin1,
                           uint8_t pin2, uint8_t pin3)
 {
-  servo0.attach(pin0);
-  servo1.attach(pin1);
-  servo2.attach(pin2);
-  servo3.attach(pin3);
+  servo0.attach(pin0, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
+  servo1.attach(pin1, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
+  servo2.attach(pin2, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
+  servo3.attach(pin3, SERVO_MIN_PULSE_US, SERVO_MAX_PULSE_US);
   servo0.write(SERVO_ZERO_ANGLE);
   servo1.write(SERVO_ZERO_ANGLE);
   servo2.write(SERVO_ZERO_ANGLE);

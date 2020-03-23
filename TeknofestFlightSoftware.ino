@@ -54,7 +54,7 @@
 #define REDUNDANT_COMP_TX_PIN PB11
 #define REDUNDANT_COMP_RX_PIN PB10
 #endif
-#define REDUNDANT_COMP_BAUD_RATE 38400
+#define REDUNDANT_COMP_BAUD_RATE 9600
 #define REDUNDANT_COMP_BUS_ID 44
 #define MAIN_COMP_BUS_ID 45
 
@@ -298,7 +298,9 @@ void loop() {
   bool flight_data_updated = false;
 
   // Send FLIGHT_STATE to the secondary flight computer !
-  redundant_s.write((uint8_t)FLIGHT_STATE);
+  if (redundant_s.availableForWrite()) {
+    redundant_s.write((uint8_t)FLIGHT_STATE);
+  }
 
   // Attempt to update flight data (orientation, position and velocity) from IMU
   if(IMU.tryReadSensor()) {
@@ -329,30 +331,30 @@ void loop() {
     pitch *= (180.0 / PI);
     yaw   *= (180.0 / PI);
     // Display the data
-    Serial.print(F("dt:\t"));
+    Serial.print(F("dt: "));
     Serial.print(deltat);
-    Serial.print(F("\tRoll:\t"));
+    Serial.print(F("\tRoll: "));
     Serial.print(roll, 4);
-    Serial.print(F("\tPitch:\t"));
+    Serial.print(F("\tPitch: "));
     Serial.print(pitch, 4);
-    Serial.print(F("\tYaw:\t"));
+    Serial.print(F("\tYaw: "));
     Serial.print(yaw, 4);
 #ifndef STM32_CORE_VERSION
-    Serial.print(F("\tX:\t"));
+    Serial.print(F("\tX: "));
     print_int64_t(lat_filter.get_pos_mm());
-    Serial.print(F("\tY:\t"));
+    Serial.print(F("\tY: "));
     print_int64_t(lon_filter.get_pos_mm());
-    Serial.print(F("\tZ:\t"));
+    Serial.print(F("\tZ: "));
     print_int64_t(alt_filter.get_pos_mm());
 #else
-    Serial.print(F("\tX:\t"));
+    Serial.print(F("\tX: "));
     Serial.print(lat_filter.get_pos_m());
-    Serial.print(F("\tY:\t"));
+    Serial.print(F("\tY: "));
     Serial.print(lon_filter.get_pos_m());
-    Serial.print(F("\tZ:\t"));
+    Serial.print(F("\tZ: "));
     Serial.print(alt_filter.get_pos_m());
 #endif
-    Serial.print(F("\tvar(Vz):\t"));
+    Serial.print(F("\tvar(Vz): "));
     Serial.print(alt_filter.get_P(1, 1), 4);
     Serial.println();
     Serial.flush();

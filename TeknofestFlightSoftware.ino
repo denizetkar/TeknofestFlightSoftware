@@ -8,7 +8,7 @@
 #include "Neo6MGPS.h"
 
 #define TSA_TIME_IN 0
-#define TSA_RESPONSE_TIME_OUT 5000
+#define TSA_RESPONSE_TIME_OUT 10000
 #define PJON_MAX_PACKETS 0
 #define PJON_PACKET_MAX_LENGTH 16
 #include <PJON.h>
@@ -33,10 +33,12 @@
 #define IMU_CS_PIN PA4
 #endif
 #define IMU_CALIB_MAX_COUNT 500
-#define MIN_NUM_GPS 5
+#define MIN_NUM_GPS 6
 
-// TODO: redefine the value below as at least (4g)^2=16 !
+// TODO: redefine the value below as at least (3g)^2=9 !
 #define TAKEOFF_ACCELERATION_SQ 1.0
+// The delay below must be >= 1000/(IMU Output Data Rate)
+#define TAKEOFF_SENSING_DELAY 100
 
 #ifndef STM32_CORE_VERSION
 #define GPS_TX_PIN 2
@@ -87,7 +89,7 @@
 #endif
 #endif
 
-#define VZ_NEG_Q_BIT_SIZE 192
+#define VZ_NEG_Q_BIT_SIZE 512
 #ifndef STM32_CORE_VERSION
 #define MAIN_RECOVERY_ALTITUDE 600000
 #else
@@ -145,7 +147,7 @@ const double q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.095845752
 //---------------------setup and loop variables---------------------------------------------------
 
 // Enumeration of flight states
-enum FlightState: uint8_t {
+enum FlightState : uint8_t {
   _BEFORE_FLIGHT = 0,
   _FLYING = 1,
   _FALLING_FAST = 2,
@@ -195,10 +197,10 @@ void setup() {
   if (status < 0) {
     Serial.print(F("IMU initialization unsuccessful: "));
     Serial.println(status);
-    while(1);
+    while (1);
   }
 
-  // Setting the accelerometer full scale range to +/-8G 
+  // Setting the accelerometer full scale range to +/-8G
   IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);
   // Setting the gyroscope full scale range to +/-1000 deg/s
   IMU.setGyroRange(MPU9250::GYRO_RANGE_1000DPS);
@@ -213,24 +215,26 @@ void setup() {
   IMU.setAccelCalY(0.000612666666666678);
   IMU.setAccelCalZ(-0.0303496666666667);
   IMU.setAccelTM(
-    {{0.997971236148955,-0.00430622003848702,0.00118009636690604},
-     {0.00470700811404384,0.998364615545652,-0.00638311318231112},
-     {0.0012955016372647,0.00387494101216781,0.987478872856534}});
+  { {0.997971236148955, -0.00430622003848702, 0.00118009636690604},
+    {0.00470700811404384, 0.998364615545652, -0.00638311318231112},
+    {0.0012955016372647, 0.00387494101216781, 0.987478872856534}
+  });
   // MAG bias
   IMU.setMagCalX(-41.334130);
   IMU.setMagCalY(17.872664);
   IMU.setMagCalZ(11.827231);
   IMU.setMagTM(
-    {{0.023547,-0.000435,-0.002774},
-     {-0.000435,0.023738,0.000579},
-     {-0.002774,0.000579,0.024689}});
+  { {0.023547, -0.000435, -0.002774},
+    { -0.000435, 0.023738, 0.000579},
+    { -0.002774, 0.000579, 0.024689}
+  });
 
   // Calibrate the estimated orientation
   Serial.println(F("Calibrating orientation estimate..."));
   uint16_t imu_data_count = 0;
   while (true) {
     // Try to read the sensor
-    if(IMU.tryReadSensor()) {
+    if (IMU.tryReadSensor()) {
 
       // Update rotation of the sensor frame with respect to the NWU frame
       // where N is magnetic north, W is west and U is up.
@@ -278,9 +282,14 @@ void setup() {
   Serial.println(F("Waiting for liftoff before loop..."));
   while (true) {
     // Try to read the sensor
-    if(IMU.tryReadSensor()) {
+    if (IMU.tryReadSensor()) {
       X = IMU.getAccelX_g(); Y = IMU.getAccelY_g(); Z = IMU.getAccelZ_g();
-      if ((X*X + Y*Y + Z*Z) > TAKEOFF_ACCELERATION_SQ) break;
+      if ((X * X + Y * Y + Z * Z) > TAKEOFF_ACCELERATION_SQ) {
+        delay(TAKEOFF_SENSING_DELAY);
+        IMU.readSensor();
+        X = IMU.getAccelX_g(); Y = IMU.getAccelY_g(); Z = IMU.getAccelZ_g();
+        if ((X * X + Y * Y + Z * Z) > TAKEOFF_ACCELERATION_SQ) break;
+      }
     }
   }
   Serial.println(F("FLYING!"));
@@ -303,7 +312,7 @@ void loop() {
   }
 
   // Attempt to update flight data (orientation, position and velocity) from IMU
-  if(IMU.tryReadSensor()) {
+  if (IMU.tryReadSensor()) {
     deltat = micros() - last_imu_read_time;
     deltat_sec = deltat / 1000000.0;
 
@@ -438,7 +447,7 @@ void loop() {
         FLIGHT_STATE = FlightState::_FALLING_SLOW;
       }
     } else if (FLIGHT_STATE == FlightState::_FALLING_SLOW) {
-    } else /*FlightState::_MAIN_COMP_SAFE_FAIL*/ {}
+    } else { /*FlightState::_MAIN_COMP_SAFE_FAIL*/ }
   }
 
   // Let the motors run

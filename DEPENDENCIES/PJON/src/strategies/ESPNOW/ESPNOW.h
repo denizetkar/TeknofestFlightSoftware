@@ -200,7 +200,7 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       if(length > 0) {
         uint8_t id = data[0]; // Package always starts with a receiver id
         if(id == 0) { // Broadcast, send to all receivers
@@ -213,5 +213,7 @@ public:
             en.send_frame(data, length);
         }
       }
+      // 'flush' unused
+      (void)flush;
     };
 };

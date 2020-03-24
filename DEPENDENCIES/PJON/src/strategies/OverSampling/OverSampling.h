@@ -209,12 +209,14 @@ class OverSampling {
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       PJON_IO_MODE(_output_pin, OUTPUT);
       pulse(3); // Send frame inititializer
       for(uint16_t b = 0; b < length; b++)
         send_byte(data[b]); // Send data
       PJON_IO_PULL_DOWN(_output_pin);
+      // 'flush' unused
+      (void)flush;
     };
 
 

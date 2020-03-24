@@ -82,7 +82,7 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
-      s->send_frame(data, length);
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
+      s->send_frame(data, length, flush);
     }
 };

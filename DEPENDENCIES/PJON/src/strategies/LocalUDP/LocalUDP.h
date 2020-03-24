@@ -122,8 +122,10 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       udp.send_frame(data, length);
+      // 'flush' unused
+      (void)flush;
     };
 
 

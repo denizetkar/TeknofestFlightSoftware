@@ -158,19 +158,19 @@ class ThroughLora {
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint8_t length) {
+    void send_frame(uint8_t *data, uint8_t length, bool flush = true) {
       start_tx();
       for(uint8_t b = 0; b < length; b++)
         send_byte(data[b]);
-      end_tx();
+      end_tx(!flush);
     };
 
     void start_tx() {
       LoRa.beginPacket();
     };
 
-    void end_tx() {
-      LoRa.endPacket();
+    void end_tx(bool async = false) {
+      LoRa.endPacket(async);
     };
 
   private:

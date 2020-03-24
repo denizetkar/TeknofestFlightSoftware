@@ -602,12 +602,11 @@ class PJON {
     uint16_t send_packet(const uint8_t *payload, uint16_t length) {
       if(!payload) return PJON_FAIL;
       if(_mode != PJON_SIMPLEX && !strategy.can_start()) return PJON_BUSY;
-      strategy.send_frame((uint8_t *)payload, length);
-      if(
-        payload[0] == PJON_BROADCAST ||
-        !(payload[1] & PJON_ACK_REQ_BIT) ||
-        _mode == PJON_SIMPLEX
-      ) return PJON_ACK;
+      bool get_ack = (payload[0] != PJON_BROADCAST) &&
+          (payload[1] & PJON_ACK_REQ_BIT) != 0 &&
+          (_mode != PJON_SIMPLEX);
+      strategy.send_frame((uint8_t *)payload, length, get_ack);
+      if(!get_ack) return PJON_ACK;
       uint16_t response = strategy.receive_response();
       if(
         response == PJON_ACK ||

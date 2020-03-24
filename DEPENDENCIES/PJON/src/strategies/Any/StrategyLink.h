@@ -73,7 +73,7 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
-      strategy.send_frame(data, length);
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
+      strategy.send_frame(data, length, flush);
     }
 };

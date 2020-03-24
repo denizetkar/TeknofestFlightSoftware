@@ -325,7 +325,7 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       _did_broadcast = false;
       if(length > 4) {
         // Extract some info from the header
@@ -358,6 +358,8 @@ public:
         }
         _last_out_time = millis();
       }
+      // 'flush' unused
+      (void)flush;
     };
 
     /* Set the UDP port: */

@@ -56,7 +56,7 @@
 #define REDUNDANT_COMP_TX_PIN PB11
 #define REDUNDANT_COMP_RX_PIN PB10
 #endif
-#define REDUNDANT_COMP_BAUD_RATE 9600
+#define REDUNDANT_COMP_BAUD_RATE 31250
 #define REDUNDANT_COMP_BUS_ID 44
 #define MAIN_COMP_BUS_ID 45
 
@@ -121,6 +121,7 @@ NeoSWSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
 #else
 HardwareSerial redundant_s(REDUNDANT_COMP_TX_PIN, REDUNDANT_COMP_RX_PIN);
 #endif
+PJON<ThroughSerialAsync> secure_rs(MAIN_COMP_BUS_ID);
 
 // Kalman Filter object for Latitude, Longitude, Altitude
 EarthPositionFilter lat_filter, lon_filter, alt_filter;
@@ -162,14 +163,12 @@ int64_t lat_mm, lon_mm, alt_mm, ground_alt_mm;
 double roll, pitch, yaw, X, Y, Z, ux, uy, uz, q_a_tn[4], deltat_sec, lat_m, lon_m, alt_m, ground_alt_m;
 #endif
 uint32_t last_imu_read_time, last_gps_read_time, deltat;
-uint8_t vz_neg_count = 0;
+uint16_t vz_neg_count = 0;
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup function-------------------------------------------------------------
 
 void setup() {
-  PJON<ThroughSerialAsync> secure_rs(MAIN_COMP_BUS_ID);
-
   Serial.begin(230400);
   while (!Serial);
 
@@ -275,7 +274,10 @@ void setup() {
   }
 
   Serial.println(F("Sending FLIGHT_STATE to the redundant computer and waiting for ACK..."));
-  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK);
+  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK) {
+    // read out garbage data
+    while (redundant_s.available()) (void)redundant_s.read();
+  }
   // TODO: Let the ground station know that flight computer is READY.
 
   // Wait for high acceleration
@@ -296,7 +298,10 @@ void setup() {
 
   // The rocket is flying now
   FLIGHT_STATE = FlightState::_FLYING;
-  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK);
+  while (secure_rs.send_packet(REDUNDANT_COMP_BUS_ID, &FLIGHT_STATE, 1) != PJON_ACK) {
+    // read out garbage data
+    while (redundant_s.available()) (void)redundant_s.read();
+  }
   last_imu_read_time = last_gps_read_time = micros();
 }
 
@@ -307,9 +312,7 @@ void loop() {
   bool flight_data_updated = false;
 
   // Send FLIGHT_STATE to the secondary flight computer !
-  if (redundant_s.availableForWrite()) {
-    redundant_s.write((uint8_t)FLIGHT_STATE);
-  }
+  secure_rs.strategy.send_frame((uint8_t*)&FLIGHT_STATE, 1, false);
 
   // Attempt to update flight data (orientation, position and velocity) from IMU
   if (IMU.tryReadSensor()) {
@@ -443,7 +446,7 @@ void loop() {
 #endif
         Serial.println(F("Less than 600m to ground!"));
 
-        //TODO: Initiate main recovery HERE!!!!!!!!!!!!!!
+        // TODO: Initiate main recovery HERE!!!!!!!!!!!!!!
         FLIGHT_STATE = FlightState::_FALLING_SLOW;
       }
     } else if (FLIGHT_STATE == FlightState::_FALLING_SLOW) {

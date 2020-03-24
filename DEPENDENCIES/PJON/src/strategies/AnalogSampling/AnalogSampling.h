@@ -327,7 +327,7 @@ class AnalogSampling {
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       PJON_IO_MODE(_output_pin, OUTPUT);
       // Add frame flag
       send_byte(AS_START);
@@ -342,6 +342,8 @@ class AnalogSampling {
         } else send_byte(data[b]);
       send_byte(AS_END);
       PJON_IO_PULL_DOWN(_output_pin);
+      // 'flush' unused
+      (void)flush;
     };
 
 

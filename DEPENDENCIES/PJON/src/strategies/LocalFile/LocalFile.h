@@ -251,11 +251,13 @@ class LocalFile {
 
     void send_response(uint8_t response) { };
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       Record record;
       memcpy(&record.message, data, length);
       record.length = length;
       bool ok = writePacketToFile(record);
       last_send_result = ok ? PJON_ACK : PJON_FAIL;
+      // 'flush' unused
+      (void)flush;
     };
 };

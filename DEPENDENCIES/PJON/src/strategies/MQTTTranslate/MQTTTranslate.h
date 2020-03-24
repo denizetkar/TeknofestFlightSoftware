@@ -377,7 +377,7 @@ public:
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       // Extract some info from the packet header
       PJONTools::parse_header(data, _packet_info);
 
@@ -461,6 +461,8 @@ public:
 
       // Publish
       last_send_success = mqttclient.publish(mqttclient.topic_buf(), data, length, retain, qos);
+      // 'flush' unused
+      (void)flush;
     };
 
     const char *find_value_separator(const char *value, uint16_t len) {

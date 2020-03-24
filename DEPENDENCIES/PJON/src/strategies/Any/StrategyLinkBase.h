@@ -65,5 +65,5 @@ public:
 
     /* Send a frame: */
 
-    virtual void send_frame(uint8_t *data, uint16_t length) = 0;
+    virtual void send_frame(uint8_t *data, uint16_t length, bool flush = true) = 0;
 };

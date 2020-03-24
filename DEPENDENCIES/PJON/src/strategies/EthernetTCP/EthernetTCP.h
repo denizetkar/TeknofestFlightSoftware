@@ -140,9 +140,11 @@ class EthernetTCP {
 
     /* Send a frame: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       if(length > 0)
         last_send_result =
           link.send((uint8_t)data[0], (const uint8_t*)data, length);
+      // 'flush' unused
+      (void)flush;
     };
 };

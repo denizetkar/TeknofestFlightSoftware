@@ -276,7 +276,7 @@ class ThroughSerialAsync {
 
     /* Send a string: */
 
-    void send_frame(uint8_t *data, uint16_t length) {
+    void send_frame(uint8_t *data, uint16_t length, bool flush = true) {
       start_tx();
       uint16_t overhead = 2;
       // Add frame flag
@@ -302,7 +302,8 @@ class ThroughSerialAsync {
             ((1000000 / (_bd / 8)) + _flush_offset) * (overhead + length)
           );
       #endif
-      PJON_SERIAL_FLUSH(serial);
+      if (flush)
+        PJON_SERIAL_FLUSH(serial);
       end_tx();
     };
 

@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "QuaternionPID.h"
 
+#define ROTATIONAL_EPSILON 1e-4
+
 void rotate_vector_by_quaternion(
   const double (&q)[4],
   double _vx, double _vy, double _vz,
@@ -19,11 +21,11 @@ void rotate_vector_by_quaternion(
   rx *= 2.0; ry *= 2.0; rz *= 2.0;
 }
 
-void quaternion_prod(const double (&q_a)[4], const double (&q_b)[4], double (&res)[4]) {
-  res[0] = q_a[0] * q_b[0] - q_a[1] * q_b[1] - q_a[2] * q_b[2] - q_a[3] * q_b[3];
-  res[1] = q_a[0] * q_b[1] + q_a[1] * q_b[0] + q_a[2] * q_b[3] - q_a[3] * q_b[2];
-  res[2] = q_a[0] * q_b[2] - q_a[1] * q_b[3] + q_a[2] * q_b[0] + q_a[3] * q_b[1];
-  res[3] = q_a[0] * q_b[3] + q_a[1] * q_b[2] - q_a[2] * q_b[1] + q_a[3] * q_b[0];
+void quaternion_prod(const double (&q_x)[4], const double (&q_y)[4], double (&res)[4]) {
+  res[0] = q_x[0] * q_y[0] - q_x[1] * q_y[1] - q_x[2] * q_y[2] - q_x[3] * q_y[3];
+  res[1] = q_x[0] * q_y[1] + q_x[1] * q_y[0] + q_x[2] * q_y[3] - q_x[3] * q_y[2];
+  res[2] = q_x[0] * q_y[2] - q_x[1] * q_y[3] + q_x[2] * q_y[0] + q_x[3] * q_y[1];
+  res[3] = q_x[0] * q_y[3] + q_x[1] * q_y[2] - q_x[2] * q_y[1] + q_x[3] * q_y[0];
 }
 
 // constructor
@@ -76,12 +78,13 @@ void QuaternionPID::compute(const double (&q_a)[4], double gx, double gy, double
     q_e[3] = -q_e[3];
   }
 
-  if (1.0 - q_e[0] < 1e-4) {
+  q_e_coeff = sqrt(1.0 - q_e[0] * q_e[0]);
+  if (q_e_coeff < ROTATIONAL_EPSILON) {
     ux = constrain(-Kd * gx + integrals[0], Xmin, Xmax);
     uy = constrain(-Kd * gy + integrals[1], Ymin, Ymax);
     uz = constrain(-Kd * gz + integrals[2], Zmin, Zmax);
   } else {
-    q_e_coeff = 2.0 * acos(q_e[0]) / sqrt(1.0 - q_e[0] * q_e[0]);
+    q_e_coeff = 2.0 * acos(q_e[0]) / q_e_coeff;
     proportionals[0] = q_e_coeff * q_e[1];
     proportionals[1] = q_e_coeff * q_e[2];
     proportionals[2] = q_e_coeff * q_e[3];

@@ -1,8 +1,6 @@
 #include <limits.h>
 #include "EarthPositionFilter.h"
 
-#define G_ACCEL_M_S2 9.807
-
 #ifndef STM32_CORE_VERSION
 
 // getter functions

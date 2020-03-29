@@ -219,13 +219,13 @@ void setup() {
     {0.0012955016372647, 0.00387494101216781, 0.987478872856534}
   });
   // MAG bias
-  IMU.setMagCalX(-41.334130);
-  IMU.setMagCalY(17.872664);
-  IMU.setMagCalZ(11.827231);
+  IMU.setMagCalX(-44.648958);
+  IMU.setMagCalY(18.219313);
+  IMU.setMagCalZ(13.284685);
   IMU.setMagTM(
-  { {0.023547, -0.000435, -0.002774},
-    { -0.000435, 0.023738, 0.000579},
-    { -0.002774, 0.000579, 0.024689}
+  { {0.021259,0.000172,-0.002970},
+    { 0.000172,0.021456,0.000552},
+    {-0.002970,0.000552,0.021140}
   });
 
   // Calibrate the estimated orientation
@@ -322,9 +322,10 @@ void loop() {
 
     // Update rotation of the sensor frame with respect to the NWU frame
     // where N is magnetic north, W is west and U is up.
-    MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
-                       0, 0, 0,
-                       0, 0, 0, deltat_sec);
+    MadgwickGYROupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(), deltat_sec);
+    //MadgwickAHRSupdate(IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
+    //                   IMU.getAccelX_g(), IMU.getAccelY_g(), IMU.getAccelZ_g(),
+    //                   IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT(), deltat_sec);
 
     // Make magnetic declination corrections to q_a
     quaternion_prod(q_magnetic_declination, q_a, q_a_tn);

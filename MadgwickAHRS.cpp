@@ -17,7 +17,11 @@
 
 #include <Arduino.h>
 #include "MadgwickAHRS.h"
+#include "QuaternionPID.h"
+//---------------------------------------------------------------------------------------------------
+// Definitions
 
+#define ROTATIONAL_EPSILON 1e-5
 //---------------------------------------------------------------------------------------------------
 // Variable definitions
 
@@ -132,6 +136,45 @@ void MadgwickAHRSupdate(double gx, double gy, double gz, double ax, double ay, d
     q_a[1] = -q_a[1];
     q_a[2] = -q_a[2];
     q_a[3] = -q_a[3];
+  }
+}
+
+void MadgwickGYROupdate(double gx, double gy, double gz, double deltat)
+{
+  double g_mag = sqrt(gx*gx + gy*gy + gz*gz), tmp, q_diff[4], q_a_new[4];
+
+  if (g_mag < ROTATIONAL_EPSILON) {
+    MadgwickAHRSupdate(gx, gy, gz,
+                       0, 0, 0,
+                       0, 0, 0, deltat);
+    return;
+  }
+
+  // https://math.stackexchange.com/a/39565/493974
+  tmp = g_mag * deltat / 2.0;
+  gx /= g_mag; gy /= g_mag; gz /= g_mag;
+  q_diff[0] = cos(tmp);
+  tmp = sin(tmp);
+  q_diff[1] = tmp * gx;
+  q_diff[2] = tmp * gy;
+  q_diff[3] = tmp * gz;
+  if (q_diff[0] < 0.0) {
+    q_diff[0] = -q_diff[0];
+    q_diff[1] = -q_diff[1];
+    q_diff[2] = -q_diff[2];
+    q_diff[3] = -q_diff[3];
+  }
+  quaternion_prod(q_a, q_diff, q_a_new);
+  if (q_a_new[0] < 0.0) {
+    q_a[0] = -q_a_new[0];
+    q_a[1] = -q_a_new[1];
+    q_a[2] = -q_a_new[2];
+    q_a[3] = -q_a_new[3];
+  } else {
+    q_a[0] = q_a_new[0];
+    q_a[1] = q_a_new[1];
+    q_a[2] = q_a_new[2];
+    q_a[3] = q_a_new[3];
   }
 }
 

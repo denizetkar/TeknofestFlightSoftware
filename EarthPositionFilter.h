@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#define G_ACCEL_M_S2 9.807
+
 class EarthPositionFilter
 {
   protected:

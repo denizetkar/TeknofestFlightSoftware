@@ -27,6 +27,7 @@ extern double q_a[4];  // quaternion of sensor frame relative to auxiliary frame
 // Function declarations
 
 void MadgwickAHRSupdate(double gx, double gy, double gz, double ax, double ay, double az, double mx, double my, double mz, double deltat);
+void MadgwickGYROupdate(double gx, double gy, double gz, double deltat);
 
 #endif
 //=====================================================================================================

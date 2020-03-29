@@ -140,9 +140,9 @@ BitQueue<VZ_NEG_Q_BIT_SIZE> vz_neg_q;
 //---------------------setup and loop constants---------------------------------------------------
 
 // There is approximately 5.5 degrees East magnetic declination in Turkey on 24.02.2020.
-// ( cos(-5.5*pi/180), 0, 0, sin(-5.5*pi/180) ) is the rotation quaternion required to
+// ( cos((-5.5/2)*pi/180), 0, 0, sin((-5.5/2)*pi/180) ) is the rotation quaternion required to
 // rotate the true north frame into magnetic north frame
-const double q_magnetic_declination[4] = {0.9953961983671789, 0, 0, -0.09584575252022398};
+const double q_magnetic_declination[4] = {0.99884838648495067907942792563, 0, 0, -0.047978128521343947775976465138102};
 
 //------------------------------------------------------------------------------------------------
 //---------------------setup and loop variables---------------------------------------------------
@@ -254,7 +254,7 @@ void setup() {
   while (true) {
 #ifndef STM32_CORE_VERSION
     if (neo6m.try_read_gps(lat_mm, lon_mm, alt_mm, MIN_NUM_GPS)) {
-      // FOUND at least 5 GPS satellites!
+      // FOUND at least 'MIN_NUM_GPS' GPS satellites!
       lat_filter.set_pos_mm(lat_mm);
       lon_filter.set_pos_mm(lon_mm);
       alt_filter.set_pos_mm(alt_mm);
@@ -263,7 +263,7 @@ void setup() {
     }
 #else
     if (neo6m.try_read_gps(lat_m, lon_m, alt_m, MIN_NUM_GPS)) {
-      // FOUND at least 5 GPS satellites!
+      // FOUND at least 'MIN_NUM_GPS' GPS satellites!
       lat_filter.set_pos_m(lat_m);
       lon_filter.set_pos_m(lon_m);
       alt_filter.set_pos_m(alt_m);
@@ -317,6 +317,7 @@ void loop() {
   // Attempt to update flight data (orientation, position and velocity) from IMU
   if (IMU.tryReadSensor()) {
     deltat = micros() - last_imu_read_time;
+    last_imu_read_time += deltat;
     deltat_sec = deltat / 1000000.0;
 
     // Update rotation of the sensor frame with respect to the NWU frame
@@ -370,14 +371,11 @@ void loop() {
     Serial.print(alt_filter.get_P(1, 1), 4);
     Serial.println();
     Serial.flush();
-    last_imu_read_time += deltat;
 
     if (FLIGHT_STATE == FlightState::_FLYING) {
       // Find corrective actions ux, uy, uz
-      rotate_vector_by_quaternion(q_magnetic_declination,
-                                  IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
-                                  X, Y, Z);
-      controller.compute(q_a_tn, X, Y, Z, ux, uy, uz);
+      controller.compute(q_a_tn, IMU.getGyroX_rads(), IMU.getGyroY_rads(), IMU.getGyroZ_rads(),
+                         ux, uy, uz);
       // Move corrections to fins
       fin_controller.makeFinCorrections(ux, uy, uz);
     }

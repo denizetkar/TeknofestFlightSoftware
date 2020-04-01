@@ -54,13 +54,13 @@ class EarthPositionFilter
 #ifndef STM32_CORE_VERSION
     EarthPositionFilter() :
       pos_mm{0}, vel_mm_per_sec{0.0},
-      P{10000000.0, 0.0, 0.0, 10000000.0},
-      proc_var{9000000.0}, R{9000000.0} {}
+      P{100000000.0, 0.0, 0.0, 100000000.0},
+      proc_var{9000000.0}, R{25000000.0} {}
 #else
     EarthPositionFilter() :
       pos_m{0.0}, vel_m_per_sec{0.0},
-      P{10.0, 0.0, 0.0, 10.0},
-      proc_var{9.0}, R{9.0} {}
+      P{100.0, 0.0, 0.0, 100.0},
+      proc_var{9.0}, R{25.0} {}
 #endif
 
 #ifndef STM32_CORE_VERSION
